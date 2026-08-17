@@ -576,6 +576,26 @@ Item {
           }
 
           RowLayout {
+            Layout.fillWidth: true
+            spacing: Style.space(8)
+
+            Item { Layout.fillWidth: true }
+
+            Keycap {
+              label: "SUPER CTRL K"
+            }
+
+            Text {
+              text: "to open settings"
+              color: Util.alpha(Color.popups.text, 0.5)
+              font.family: Style.font.family
+              font.pixelSize: Style.font.caption
+            }
+
+            Item { Layout.fillWidth: true }
+          }
+
+          RowLayout {
             id: footerSections
             Layout.fillWidth: true
             spacing: Style.space(18)
@@ -590,7 +610,7 @@ Item {
 
               Text {
                 text: "Coach"
-                color: Color.popups.text
+                color: Util.alpha(Color.popups.text, 0.62)
                 font.family: Style.font.family
                 font.pixelSize: Style.font.bodySmall
                 font.bold: true
@@ -613,7 +633,7 @@ Item {
                   Text {
                     Layout.fillWidth: true
                     text: String(parent.modelData.name || parent.modelData.desktopId || "")
-                    color: Color.popups.text
+                    color: Util.alpha(Color.popups.text, 0.62)
                     font.family: Style.font.family
                     font.pixelSize: Style.font.caption
                     elide: Text.ElideRight
@@ -621,7 +641,7 @@ Item {
 
                   Text {
                     text: "×" + Number(parent.modelData.count || 0)
-                    color: Util.alpha(Color.accent, 0.82)
+                    color: Util.alpha(Color.accent, 0.62)
                     font.family: Style.font.family
                     font.pixelSize: Style.font.caption
                     font.bold: true
@@ -646,7 +666,7 @@ Item {
 
               Text {
                 text: "Data"
-                color: Color.popups.text
+                color: Util.alpha(Color.popups.text, 0.62)
                 font.family: Style.font.family
                 font.pixelSize: Style.font.bodySmall
                 font.bold: true
@@ -688,7 +708,7 @@ Item {
                     text: "\uf1f8"
                     color: !root.pinned
                       ? Util.alpha(Color.popups.text, 0.45)
-                      : (deleteStatsControl.hovered ? Color.urgent : Color.popups.text)
+                      : (deleteStatsControl.hovered ? Color.urgent : Util.alpha(Color.popups.text, 0.62))
                     font.family: Style.font.family
                     font.pixelSize: Style.font.bodySmall
                   }
@@ -697,7 +717,7 @@ Item {
                     text: "Delete data"
                     color: !root.pinned
                       ? Util.alpha(Color.popups.text, 0.45)
-                      : (deleteStatsControl.hovered ? Color.urgent : Color.popups.text)
+                      : (deleteStatsControl.hovered ? Color.urgent : Util.alpha(Color.popups.text, 0.62))
                     font.family: Style.font.family
                     font.pixelSize: Style.font.bodySmall
                   }
@@ -728,28 +748,12 @@ Item {
               Layout.alignment: Qt.AlignTop
               spacing: Style.space(8)
 
-              RowLayout {
-                Layout.fillWidth: true
-                spacing: Style.space(8)
-
-                Text {
-                  text: "Settings"
-                  color: Color.popups.text
-                  font.family: Style.font.family
-                  font.pixelSize: Style.font.bodySmall
-                  font.bold: true
-                }
-
-                Keycap {
-                  label: "SUPER CTRL K"
-                }
-
-                Text {
-                  text: "to open settings"
-                  color: Util.alpha(Color.popups.text, 0.62)
-                  font.family: Style.font.family
-                  font.pixelSize: Style.font.caption
-                }
+              Text {
+                text: "Settings"
+                color: Util.alpha(Color.popups.text, 0.62)
+                font.family: Style.font.family
+                font.pixelSize: Style.font.bodySmall
+                font.bold: true
               }
 
               RowLayout {
@@ -760,7 +764,7 @@ Item {
                 Text {
                   Layout.fillWidth: true
                   text: "Collect data"
-                  color: root.pinned ? Color.popups.text : Util.alpha(Color.popups.text, 0.45)
+                  color: root.pinned ? Util.alpha(Color.popups.text, 0.62) : Util.alpha(Color.popups.text, 0.45)
                   font.family: Style.font.family
                   font.pixelSize: Style.font.bodySmall
                 }
@@ -768,7 +772,7 @@ Item {
                 ToggleSwitch {
                   checked: root.measurementEnabled
                   interactive: root.pinned
-                  foreground: Color.popups.text
+                  foreground: Util.alpha(Color.popups.text, 0.62)
                   accent: Color.accent
                   trackHeight: Style.space(18)
                   onToggled: root.setMeasurementEnabled(!root.measurementEnabled)
@@ -777,7 +781,7 @@ Item {
 
               Text {
                 text: "Sorting"
-                color: root.pinned ? Color.popups.text : Util.alpha(Color.popups.text, 0.45)
+                color: root.pinned ? Util.alpha(Color.popups.text, 0.62) : Util.alpha(Color.popups.text, 0.45)
                 font.family: Style.font.family
                 font.pixelSize: Style.font.bodySmall
               }
@@ -790,7 +794,7 @@ Item {
                 enabled: root.pinned
                 opacity: root.pinned ? 1 : 0.45
                 showLabel: false
-                foreground: Color.popups.text
+                foreground: Util.alpha(Color.popups.text, 0.62)
                 accent: Color.accent
                 options: [
                   { value: "none", label: "None" },
@@ -803,7 +807,7 @@ Item {
 
               Text {
                 text: "Sorting appearance"
-                color: root.pinned ? Color.popups.text : Util.alpha(Color.popups.text, 0.45)
+                color: root.pinned ? Util.alpha(Color.popups.text, 0.62) : Util.alpha(Color.popups.text, 0.45)
                 font.family: Style.font.family
                 font.pixelSize: Style.font.bodySmall
               }
@@ -816,7 +820,7 @@ Item {
                 enabled: root.pinned
                 opacity: root.pinned ? 1 : 0.45
                 showLabel: false
-                foreground: Color.popups.text
+                foreground: Util.alpha(Color.popups.text, 0.62)
                 accent: Color.accent
                 options: [
                   { value: "columns", label: "Columns first" },
