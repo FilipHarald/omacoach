@@ -557,8 +557,9 @@ Item {
         width: Math.min(panel.width - Style.space(48), Math.max(panel.width * 0.5, panel.desiredWidth))
         height: content.implicitHeight + Style.spacing.panelPadding * 2 + borderTop + borderBottom
         anchors.horizontalCenter: parent.horizontalCenter
-        anchors.bottom: parent.bottom
-        anchors.bottomMargin: root.pinned ? Style.space(130) : (root.opened ? Style.space(26) : Style.space(12))
+        y: root.pinned
+          ? panel.height - Style.space(130) - height
+          : Math.max(Style.space(12), Math.min(panel.height * 0.5, panel.height - (root.opened ? Style.space(26) : Style.space(12)) - height))
         color: Color.popups.background
         borderSpec: Border.surfaceSpec("popups", "border", Color.popups.border, Math.max(1, Style.space(2)))
         radius: Style.cornerRadius
@@ -723,10 +724,11 @@ Item {
             ColumnLayout {
               Layout.fillWidth: true
               Layout.preferredWidth: 1
-              Layout.alignment: Qt.AlignTop
+              Layout.alignment: Qt.AlignTop | Qt.AlignHCenter
               spacing: Style.space(5)
 
               Text {
+                Layout.alignment: Qt.AlignHCenter
                 text: "Coach"
                 color: Util.alpha(Color.popups.text, 0.62)
                 font.family: Style.font.family
@@ -735,6 +737,7 @@ Item {
               }
 
               Text {
+                Layout.alignment: Qt.AlignHCenter
                 visible: root.searchedAppsSummary().length > 0
                 text: "Available insights"
                 color: Util.alpha(Color.popups.text, 0.5)
@@ -752,10 +755,11 @@ Item {
             ColumnLayout {
               Layout.fillWidth: true
               Layout.preferredWidth: 1
-              Layout.alignment: Qt.AlignTop
+              Layout.alignment: Qt.AlignTop | Qt.AlignHCenter
               spacing: Style.space(5)
 
               Text {
+                Layout.alignment: Qt.AlignHCenter
                 text: "Data"
                 color: Util.alpha(Color.popups.text, 0.62)
                 font.family: Style.font.family
@@ -764,6 +768,7 @@ Item {
               }
 
               Text {
+                Layout.alignment: Qt.AlignHCenter
                 text: root.observedBindingCount() + " bindings observed · " + root.totalAttemptCount() + " attempts"
                 color: Util.alpha(Color.popups.text, 0.5)
                 font.family: Style.font.family
@@ -771,6 +776,7 @@ Item {
               }
 
               Text {
+                Layout.alignment: Qt.AlignHCenter
                 text: root.searchedAppsSummary(true).length + " searched apps · " + root.totalAppSelectionCount() + " selections"
                 color: Util.alpha(Color.popups.text, 0.5)
                 font.family: Style.font.family
@@ -787,10 +793,11 @@ Item {
             ColumnLayout {
               Layout.fillWidth: true
               Layout.preferredWidth: 1
-              Layout.alignment: Qt.AlignTop
+              Layout.alignment: Qt.AlignTop | Qt.AlignHCenter
               spacing: Style.space(5)
 
               Text {
+                Layout.alignment: Qt.AlignHCenter
                 text: "Settings"
                 color: Util.alpha(Color.popups.text, 0.62)
                 font.family: Style.font.family
@@ -799,6 +806,7 @@ Item {
               }
 
               Text {
+                Layout.alignment: Qt.AlignHCenter
                 visible: root.measurementEnabled
                 text: "Data collecting is enabled"
                 color: Util.alpha(Color.popups.text, 0.5)
@@ -823,6 +831,7 @@ Item {
               spacing: Style.space(6)
 
               Text {
+                Layout.alignment: Qt.AlignHCenter
                 text: "Coach"
                 color: Util.alpha(Color.popups.text, 0.62)
                 font.family: Style.font.family
@@ -831,6 +840,7 @@ Item {
               }
 
               Text {
+                Layout.alignment: Qt.AlignHCenter
                 visible: coachPane.apps.length === 0
                 text: root.searchedAppsSummary(true).length > 0
                   ? "No active coach suggestions"
@@ -916,6 +926,7 @@ Item {
               spacing: Style.space(5)
 
               Text {
+                Layout.alignment: Qt.AlignHCenter
                 text: "Data"
                 color: Util.alpha(Color.popups.text, 0.62)
                 font.family: Style.font.family
@@ -924,6 +935,7 @@ Item {
               }
 
               Text {
+                Layout.alignment: Qt.AlignHCenter
                 text: root.observedBindingCount() + " bindings observed · " + root.totalAttemptCount() + " attempts"
                 color: Util.alpha(Color.popups.text, 0.62)
                 font.family: Style.font.family
@@ -931,6 +943,7 @@ Item {
               }
 
               Text {
+                Layout.alignment: Qt.AlignHCenter
                 text: root.searchedAppsSummary(true).length + " searched apps · " + root.totalAppSelectionCount() + " selections"
                 color: Util.alpha(Color.popups.text, 0.62)
                 font.family: Style.font.family
@@ -950,9 +963,8 @@ Item {
                 color: hovered ? Util.alpha(Color.popups.text, 0.08) : "transparent"
 
                 RowLayout {
-                  anchors.left: parent.left
+                  anchors.horizontalCenter: parent.horizontalCenter
                   anchors.verticalCenter: parent.verticalCenter
-                  anchors.leftMargin: Style.space(6)
                   spacing: Style.space(8)
 
                   Text {
@@ -993,9 +1005,8 @@ Item {
                 color: hovered ? Util.alpha(Color.urgent, 0.13) : "transparent"
 
                 RowLayout {
-                  anchors.left: parent.left
+                  anchors.horizontalCenter: parent.horizontalCenter
                   anchors.verticalCenter: parent.verticalCenter
-                  anchors.leftMargin: Style.space(6)
                   spacing: Style.space(8)
 
                   Text {
@@ -1043,6 +1054,7 @@ Item {
               spacing: Style.space(8)
 
               Text {
+                Layout.alignment: Qt.AlignHCenter
                 text: "Settings"
                 color: Util.alpha(Color.popups.text, 0.62)
                 font.family: Style.font.family
