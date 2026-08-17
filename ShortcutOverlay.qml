@@ -384,7 +384,10 @@ Item {
       anchors { top: true; right: true; bottom: true; left: true }
       color: "transparent"
       exclusionMode: ExclusionMode.Ignore
-      mask: Region { item: root.pinned ? footerSections : null }
+      mask: Region {
+        Region { item: root.pinned ? footerSections : null }
+        Region { item: root.pinned ? topCloseControl : null }
+      }
 
       WlrLayershell.namespace: "omacoach-shortcuts"
       WlrLayershell.layer: WlrLayer.Overlay
@@ -453,14 +456,41 @@ Item {
             }
           }
 
-          Text {
+          Rectangle {
+            id: topCloseControl
+
             visible: root.pinned
-            Layout.alignment: Qt.AlignHCenter
-            text: "To exit: [SUPER CTRL K]"
-            color: Color.urgent
-            font.family: Style.font.family
-            font.pixelSize: Style.font.bodySmall
-            font.bold: true
+            Layout.fillWidth: true
+            Layout.preferredHeight: Style.space(28)
+            radius: Style.space(6)
+            color: topCloseMouse.containsMouse ? Util.alpha(Color.urgent, 0.1) : "transparent"
+
+            Text {
+              anchors.centerIn: parent
+              text: "To exit: [SUPER CTRL K]"
+              color: Color.urgent
+              font.family: Style.font.family
+              font.pixelSize: Style.font.bodySmall
+              font.bold: true
+            }
+
+            Text {
+              anchors.right: parent.right
+              anchors.verticalCenter: parent.verticalCenter
+              text: "x"
+              color: Color.urgent
+              font.family: Style.font.family
+              font.pixelSize: Style.space(20)
+              font.bold: true
+            }
+
+            MouseArea {
+              id: topCloseMouse
+              anchors.fill: parent
+              hoverEnabled: true
+              cursorShape: Qt.PointingHandCursor
+              onClicked: root.togglePinned("")
+            }
           }
 
           Rectangle {
