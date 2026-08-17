@@ -13,10 +13,27 @@ takes keyboard focus and disappears before Hyprland executes an action key.
   muscle memory.
 - Runs as a click-through, keyboard-focus-free layer-shell overlay.
 - Supports live modifier filtering and reloads after Hyprland config changes.
+- Resolves terminal key presses through the active XKB layout and stores only
+  aggregate counts for chords that uniquely match the displayed inventory.
+- Labels those counts as attempted shortcuts, not confirmed invocations.
 
 Mouse, wheel, `XF86`, `code:`, submap, and native multi-key chord bindings are
 not promised by this prototype. Hyprland does not expose a post-dispatch event,
-so no usage measurement is implemented yet.
+so they are excluded from attempted-shortcut measurement.
+
+Measurement is local and enabled when the plugin is enabled. It can be paused,
+inspected, or reset without disabling shortcut hints:
+
+```bash
+omarchy-shell omacoach measurement off
+omarchy-shell omacoach measurement on
+omarchy-shell omacoach attempts
+omarchy-shell omacoach resetAttempts
+```
+
+The plugin stores only a count per matched binding in
+`${XDG_STATE_HOME:-~/.local/state}/omacoach/attempts.json`. It stores no raw
+keys, unmatched chords, timestamps, focused applications, or event history.
 
 ## Development install
 

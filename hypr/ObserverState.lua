@@ -48,6 +48,7 @@ function StateMachine.new(options)
   self.visible_modifier_key = ""
   self.on_arm = options.on_arm or noop
   self.on_update = options.on_update or noop
+  self.on_attempt = options.on_attempt or noop
   self.on_hide = options.on_hide or noop
   self.on_reload = options.on_reload or noop
   return self
@@ -96,6 +97,7 @@ function StateMachine:handle_key(keycode, key_state, current_modifiers)
   if self.state == "SUPPRESSED" then return end
 
   if key_state == 1 and not is_modifier then
+    self.on_attempt(self.visible_modifier_key, tonumber(keycode))
     self:suppress()
     return
   end

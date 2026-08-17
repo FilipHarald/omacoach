@@ -12,6 +12,7 @@ Item {
   id: root
 
   property bool opened: false
+  property var manifest: null
   property string targetMonitor: ""
   property string currentModifierKey: "SUPER"
   property var bindingGroups: ({})
@@ -19,9 +20,24 @@ Item {
   property var visibleBindings: []
   property var modifierBranches: []
   property int hiddenBindingCount: 0
+  property var keycodeMap: ({})
+  property var attemptStats: ({})
+  property bool statsLoaded: false
+  property bool measurementEnabled: true
   readonly property int revealDelayMs: 180
   readonly property int maximumBindings: 24
   readonly property var currentModifiers: ShortcutModel.normalizeModifiers(currentModifierKey)
+  readonly property string pluginDir: manifest && manifest.__sourceDir ? String(manifest.__sourceDir) : ""
+  readonly property string stateHome: Quickshell.env("XDG_STATE_HOME") || (Quickshell.env("HOME") + "/.local/state")
+  readonly property string stateDir: stateHome + "/omacoach"
+  readonly property string statsPath: stateDir + "/attempts.json"
+
+  onPluginDirChanged: {
+    if (pluginDir && !keymapProcess.running) {
+      keymapProcess.command = [pluginDir + "/scripts/keymap"]
+      keymapProcess.running = true
+    }
+  }
 
   function updateModel(modifiers) {
     currentModifierKey = ShortcutModel.modifierKey(modifiers) || "SUPER"
@@ -36,6 +52,97 @@ Item {
     var parsed = ShortcutModel.parseBindings(String(output || ""))
     bindingGroups = ShortcutModel.groupBindings(parsed)
     updateModel(currentModifierKey)
+  }
+
+  function loadKeymap(output) {
+    var map = {}
+    var lines = String(output || "").split(/\r?\n/)
+    for (var i = 0; i < lines.length; i++) {
+      var fields = lines[i].split("\t")
+      if (fields.length === 2 && fields[0] && fields[1]) map[String(fields[0])] = String(fields[1]).toUpperCase()
+    }
+    keycodeMap = map
+  }
+
+  function bindingSignature(binding) {
+    return String(binding.modifierKey || "") + "\u001f" + String(binding.key || "").toUpperCase()
+  }
+
+  function attemptCount(binding) {
+    var entry = attemptStats[bindingSignature(binding)]
+    return entry && Number(entry.count) > 0 ? Number(entry.count) : 0
+  }
+
+  function loadStats(raw) {
+    if (statsLoaded) return
+    var parsed = null
+    try { parsed = JSON.parse(String(raw || "")) } catch (e) { parsed = null }
+    measurementEnabled = !parsed || parsed.enabled !== false
+    attemptStats = parsed && parsed.version === 1 && parsed.bindings && typeof parsed.bindings === "object"
+      ? parsed.bindings : ({})
+    statsLoaded = true
+  }
+
+  function saveStats() {
+    if (!statsLoaded) return
+    statsFile.setText(JSON.stringify({
+      version: 1,
+      enabled: measurementEnabled,
+      bindings: attemptStats
+    }, null, 2) + "\n")
+  }
+
+  function scheduleStatsSave() {
+    if (statsLoaded) statsSaveTimer.restart()
+  }
+
+  function setMeasurementEnabled(enabled) {
+    measurementEnabled = enabled === true
+    scheduleStatsSave()
+  }
+
+  function resetStats() {
+    attemptStats = ({})
+    scheduleStatsSave()
+  }
+
+  function recordAttempt(modifiers, keycode) {
+    if (!statsLoaded || !measurementEnabled) return false
+    var key = keycodeMap[String(keycode)]
+    if (!key) return false
+
+    var candidates = ShortcutModel.bindingsFor(bindingGroups, modifiers)
+    var matched = null
+    for (var i = 0; i < candidates.length; i++) {
+      if (String(candidates[i].key || "").toUpperCase() !== key) continue
+      if (matched) return false
+      matched = candidates[i]
+    }
+    if (!matched) return false
+
+    var signature = bindingSignature(matched)
+    var next = Object.assign({}, attemptStats)
+    var previous = next[signature]
+    next[signature] = { count: (previous ? Number(previous.count) : 0) + 1 }
+    attemptStats = next
+    scheduleStatsSave()
+    return true
+  }
+
+  function observedBindingCount() {
+    var count = 0
+    for (var signature in attemptStats) {
+      if (attemptStats[signature] && Number(attemptStats[signature].count) > 0) count++
+    }
+    return count
+  }
+
+  function totalAttemptCount() {
+    var count = 0
+    for (var signature in attemptStats) {
+      if (attemptStats[signature]) count += Number(attemptStats[signature].count) || 0
+    }
+    return count
   }
 
   function armHints(modifiers, monitor) {
@@ -83,6 +190,41 @@ Item {
     }
   }
 
+  Process {
+    id: keymapProcess
+    command: root.pluginDir ? [root.pluginDir + "/scripts/keymap"] : []
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: root.loadKeymap(text)
+    }
+  }
+
+  Process {
+    id: ensureStateDirProcess
+    command: ["mkdir", "-p", root.stateDir]
+    onExited: function(exitCode) {
+      if (exitCode === 0) statsFile.reload()
+      else root.loadStats("")
+    }
+  }
+
+  FileView {
+    id: statsFile
+    path: root.statsPath
+    watchChanges: false
+    atomicWrites: true
+    printErrors: false
+    onLoaded: root.loadStats(text())
+    onLoadFailed: root.loadStats("")
+  }
+
+  Timer {
+    id: statsSaveTimer
+    interval: 200
+    repeat: false
+    onTriggered: root.saveStats()
+  }
+
   IpcHandler {
     target: "omacoach"
 
@@ -99,6 +241,30 @@ Item {
     function hide(): string {
       root.hideHints()
       return "ok"
+    }
+
+    function attempt(modifiers: string, keycode: string): string {
+      return root.recordAttempt(modifiers, Number(keycode)) ? "recorded" : "ignored"
+    }
+
+    function measurement(value: string): string {
+      var normalized = String(value || "").toLowerCase()
+      if (normalized === "on") root.setMeasurementEnabled(true)
+      else if (normalized === "off") root.setMeasurementEnabled(false)
+      return root.measurementEnabled ? "on" : "off"
+    }
+
+    function resetAttempts(): string {
+      root.resetStats()
+      return "ok"
+    }
+
+    function attempts(): string {
+      return JSON.stringify({
+        enabled: root.measurementEnabled,
+        observedBindings: root.observedBindingCount(),
+        totalAttempts: root.totalAttemptCount()
+      })
     }
 
     function reload(): string {
@@ -119,7 +285,11 @@ Item {
     }
   }
 
-  Component.onCompleted: if (!bindingProcess.running) bindingProcess.running = true
+  Component.onCompleted: {
+    if (!bindingProcess.running) bindingProcess.running = true
+    if (root.pluginDir && !keymapProcess.running) keymapProcess.running = true
+    if (!ensureStateDirProcess.running) ensureStateDirProcess.running = true
+  }
 
   Variants {
     model: Quickshell.screens
@@ -193,6 +363,7 @@ Item {
               BindingRow {
                 required property var modelData
                 binding: modelData
+                attemptCount: root.attemptCount(modelData)
                 Layout.fillWidth: true
               }
             }
@@ -237,6 +408,19 @@ Item {
                 branch: true
               }
             }
+          }
+
+
+          Text {
+            Layout.alignment: Qt.AlignHCenter
+            text: root.measurementEnabled
+              ? (root.totalAttemptCount() === 0
+                ? "Learning attempted shortcuts locally"
+                : root.observedBindingCount() + " bindings observed · " + root.totalAttemptCount() + " attempts")
+              : "Shortcut measurement paused"
+            color: Util.alpha(Color.popups.text, 0.48)
+            font.family: Style.font.family
+            font.pixelSize: Style.font.caption
           }
         }
       }

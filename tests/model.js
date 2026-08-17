@@ -25,4 +25,6 @@ assert.deepEqual(model.cappedBindings(bindings, 2), {
   hiddenCount: 1
 })
 
+assert.equal(model.bindingsFor(groups, "SUPER ALT")[0].description, "Apps menu")
+
 console.log("model tests passed")

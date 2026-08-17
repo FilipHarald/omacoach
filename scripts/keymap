@@ -1,0 +1,42 @@
+#!/bin/bash
+
+set -euo pipefail
+
+keyboard=$(hyprctl devices -j | jq -c '.keyboards[] | select(.main == true)' | head -n 1)
+[[ -n "$keyboard" ]] || exit 0
+
+layout=$(jq -r '.layout // ""' <<<"$keyboard")
+variant=$(jq -r '.variant // ""' <<<"$keyboard")
+options=$(jq -r '.options // ""' <<<"$keyboard")
+[[ -n "$layout" ]] || exit 0
+
+args=(compile-keymap --layout "$layout")
+[[ -n "$variant" ]] && args+=(--variant "$variant")
+[[ -n "$options" ]] && args+=(--options "$options")
+
+xkbcli "${args[@]}" | awk '
+  /^[[:space:]]*xkb_keycodes/ { in_keycodes = 1; next }
+  in_keycodes && /^[[:space:]]*};/ { in_keycodes = 0 }
+  in_keycodes && match($0, /<[^>]+>[[:space:]]*=[[:space:]]*[0-9]+/) {
+    token = substr($0, RSTART, RLENGTH)
+    name = token
+    sub(/^</, "", name); sub(/>.*/, "", name)
+    value = token
+    sub(/^.*=[[:space:]]*/, "", value)
+    codes[name] = value + 0
+  }
+  match($0, /key[[:space:]]+<[^>]+>[[:space:]]*\{[^[]*\[[[:space:]]*[^],[:space:]]+/) {
+    token = substr($0, RSTART, RLENGTH)
+    name = token
+    sub(/^.*</, "", name); sub(/>.*/, "", name)
+    symbol = token
+    sub(/^.*\[[[:space:]]*/, "", symbol)
+    symbols[name] = toupper(symbol)
+  }
+  END {
+    for (name in symbols) {
+      if (codes[name] > 0 && symbols[name] != "NOSYMBOL")
+        print codes[name] "\t" symbols[name]
+    }
+  }
+'

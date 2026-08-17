@@ -6,6 +6,7 @@ Item {
   id: root
 
   required property var binding
+  property int attemptCount: 0
 
   implicitWidth: Style.space(220)
   implicitHeight: Style.space(32)
@@ -28,6 +29,16 @@ Item {
       font.pixelSize: Style.font.bodySmall
       elide: Text.ElideRight
       maximumLineCount: 1
+    }
+
+    Text {
+      visible: root.attemptCount > 0
+      Layout.alignment: Qt.AlignVCenter
+      text: "×" + root.attemptCount
+      color: Util.alpha(Color.accent, 0.9)
+      font.family: Style.font.family
+      font.pixelSize: Style.font.caption
+      font.bold: true
     }
   }
 }

@@ -60,6 +60,9 @@ machine = State.new({
   on_update = function(modifiers)
     send_ipc("update", modifiers, active_monitor_name())
   end,
+  on_attempt = function(modifiers, keycode)
+    send_ipc("attempt", modifiers, keycode)
+  end,
   on_hide = function()
     send_ipc("hide")
   end,
