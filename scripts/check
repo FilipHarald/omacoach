@@ -1,0 +1,9 @@
+#!/bin/bash
+
+set -euo pipefail
+
+node tests/model.js
+lua tests/observer.lua
+luac -p hypr/observer.lua hypr/ObserverState.lua
+omarchy-plugin-validate .
+qmllint -I /usr/share/omarchy/shell ShortcutOverlay.qml components/*.qml

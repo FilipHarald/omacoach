@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "id": "omacoach",
+  "name": "Omacoach",
+  "version": "0.1.0",
+  "author": "Filip",
+  "license": "MIT",
+  "description": "A contextual Omarchy shortcut coach that reveals available bindings while Super is held.",
+  "kinds": [
+    "overlay"
+  ],
+  "keepLoaded": true,
+  "entryPoints": {
+    "overlay": "ShortcutOverlay.qml"
+  }
+}
