@@ -37,6 +37,12 @@ end
 
 local machine
 local pending_key_event
+local visibility_sequence = os.time() * 1000000 + math.floor(os.clock() * 1000)
+
+local function send_visibility(method, ...)
+  visibility_sequence = visibility_sequence + 1
+  send_ipc(method, visibility_sequence, ...)
+end
 
 local function flush_pending_key_event()
   if not pending_key_event then return end
@@ -52,24 +58,33 @@ settle_timer = hl.timer(function()
 end, { timeout = 1, type = "repeat" })
 settle_timer:set_enabled(false)
 
+local watchdog_timer
+
 machine = State.new({
   initial_modifiers = current_modifiers(),
   on_arm = function(modifiers)
-    send_ipc("arm", modifiers, active_monitor_name())
+    send_visibility("arm", modifiers, active_monitor_name())
+    watchdog_timer:set_enabled(true)
   end,
   on_update = function(modifiers)
-    send_ipc("update", modifiers, active_monitor_name())
+    send_visibility("update", modifiers, active_monitor_name())
   end,
   on_attempt = function(modifiers, keycode)
     send_ipc("attempt", modifiers, keycode)
   end,
   on_hide = function()
-    send_ipc("hide")
+    send_visibility("hide")
   end,
   on_reload = function()
+    send_visibility("hide")
     send_ipc("reload")
   end,
 })
+
+watchdog_timer = hl.timer(function()
+  watchdog_timer:set_enabled(machine:reconcile(current_modifiers()))
+end, { timeout = 100, type = "repeat" })
+watchdog_timer:set_enabled(false)
 
 hl.on("input.keyboard.key", function(keycode, _, key_state)
   settle_timer:set_enabled(false)
@@ -83,6 +98,7 @@ end)
 
 hl.on("config.reloaded", function()
   settle_timer:set_enabled(false)
+  watchdog_timer:set_enabled(false)
   pending_key_event = nil
   machine:config_reloaded(current_modifiers())
 end)

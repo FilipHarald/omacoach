@@ -27,6 +27,7 @@ Item {
   property bool measurementEnabled: true
   property string sortOrder: "none"
   property string fillOrder: "columns"
+  property double visibilitySequence: 0
   property bool pinned: false
   readonly property int revealDelayMs: 180
   readonly property int maximumBindings: 40
@@ -235,6 +236,13 @@ Item {
     opened = false
   }
 
+  function acceptVisibilitySequence(sequence) {
+    var value = Number(sequence)
+    if (!isFinite(value) || value <= visibilitySequence) return false
+    visibilitySequence = value
+    return true
+  }
+
   function togglePinned(monitor) {
     revealTimer.stop()
     if (pinned) {
@@ -314,17 +322,20 @@ Item {
   IpcHandler {
     target: "omacoach"
 
-    function arm(modifiers: string, monitor: string): string {
+    function arm(sequence: string, modifiers: string, monitor: string): string {
+      if (!root.acceptVisibilitySequence(sequence)) return "stale"
       root.armHints(modifiers, monitor)
       return "ok"
     }
 
-    function update(modifiers: string, monitor: string): string {
+    function update(sequence: string, modifiers: string, monitor: string): string {
+      if (!root.acceptVisibilitySequence(sequence)) return "stale"
       root.updateHints(modifiers, monitor)
       return "ok"
     }
 
-    function hide(): string {
+    function hide(sequence: string): string {
+      if (!root.acceptVisibilitySequence(sequence)) return "stale"
       root.hideHints()
       return "ok"
     }

@@ -111,6 +111,17 @@ function StateMachine:handle_key(keycode, key_state, current_modifiers)
   end
 end
 
+function StateMachine:reconcile(current_modifiers)
+  local current = copy_modifiers(current_modifiers)
+  self.modifiers = current
+  if current.super then return self.state ~= "IDLE" end
+
+  if self.state ~= "IDLE" then self.on_hide() end
+  self.state = "IDLE"
+  self.visible_modifier_key = ""
+  return false
+end
+
 function StateMachine:config_reloaded(current_modifiers)
   self.state = "IDLE"
   self.visible_modifier_key = ""
