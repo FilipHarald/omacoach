@@ -1,5 +1,5 @@
 var MODIFIER_ORDER = ["SUPER", "SHIFT", "CTRL", "ALT"]
-var BRANCH_ORDER = ["SHIFT", "CTRL", "ALT"]
+var BRANCH_ORDER = MODIFIER_ORDER
 var DISPLAY_GROUPS = [
   { pattern: /^Switch to workspace (?:10|[1-9])$/, description: "Switch to workspace [nbr]" },
   { pattern: /^Move window to workspace (?:10|[1-9])$/, description: "Move window to workspace [nbr]" },
@@ -52,7 +52,7 @@ function parseLine(line) {
   var key = trim(combo.substring(separator + 3))
   var upperKey = key.toUpperCase()
 
-  if (modifiers.indexOf("SUPER") === -1) return null
+  if (modifiers.length === 0) return null
   if (!key || upperKey.indexOf("XF86") === 0 || upperKey.indexOf("MOUSE") !== -1) return null
   if (/^CODE:[0-9]+$/i.test(key)) return null
 

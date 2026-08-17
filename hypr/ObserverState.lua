@@ -40,6 +40,10 @@ local function modifier_key(modifiers)
   return table.concat(parts, " ")
 end
 
+local function has_modifiers(modifiers)
+  return modifiers.super or modifiers.shift or modifiers.ctrl or modifiers.alt
+end
+
 function StateMachine.new(options)
   options = options or {}
   local self = setmetatable({}, StateMachine)
@@ -66,7 +70,7 @@ function StateMachine:suppress()
   self.visible_modifier_key = ""
 end
 
-function StateMachine:release_super()
+function StateMachine:release_modifiers()
   if self.state == "ARMED" then self.on_hide() end
   self.state = "IDLE"
   self.visible_modifier_key = ""
@@ -79,8 +83,8 @@ function StateMachine:handle_key(keycode, key_state, current_modifiers)
   local current = copy_modifiers(current_modifiers)
   self.modifiers = current
 
-  if not current.super then
-    self:release_super()
+  if not has_modifiers(current) then
+    self:release_modifiers()
     return
   end
 
@@ -88,7 +92,7 @@ function StateMachine:handle_key(keycode, key_state, current_modifiers)
     or modifiers_changed(previous, current)
 
   if self.state == "IDLE" then
-    if key_state == 1 and not previous.super and current.super and is_modifier then
+    if key_state == 1 and not has_modifiers(previous) and has_modifiers(current) and is_modifier then
       self:arm()
     end
     return
@@ -114,7 +118,7 @@ end
 function StateMachine:reconcile(current_modifiers)
   local current = copy_modifiers(current_modifiers)
   self.modifiers = current
-  if current.super then return self.state ~= "IDLE" end
+  if has_modifiers(current) then return self.state ~= "IDLE" end
 
   if self.state ~= "IDLE" then self.on_hide() end
   self.state = "IDLE"
@@ -132,5 +136,6 @@ end
 return {
   new = StateMachine.new,
   modifier_key = modifier_key,
+  has_modifiers = has_modifiers,
   modifier_keycodes = MODIFIER_KEYCODES,
 }

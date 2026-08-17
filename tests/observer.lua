@@ -43,4 +43,23 @@ actual = table.concat(events, ",")
 expected = "arm:SUPER,attempt:SUPER:65,hide,hide"
 assert(actual == expected, "expected " .. expected .. ", got " .. actual)
 
+events = {}
+machine = State.new({
+  initial_modifiers = {},
+  on_arm = function(value) push("arm", value) end,
+  on_update = function(value) push("update", value) end,
+  on_attempt = function(modifiers, keycode) push("attempt", modifiers .. ":" .. keycode) end,
+  on_hide = function() push("hide") end,
+})
+
+machine:handle_key(64, 1, { alt = true })
+machine:handle_key(50, 1, { shift = true, alt = true })
+machine:handle_key(23, 1, { shift = true, alt = true })
+machine:handle_key(50, 0, { alt = true })
+machine:handle_key(64, 0, {})
+
+actual = table.concat(events, ",")
+expected = "arm:ALT,update:SHIFT ALT,attempt:SHIFT ALT:23,hide"
+assert(actual == expected, "expected " .. expected .. ", got " .. actual)
+
 print("observer tests passed")

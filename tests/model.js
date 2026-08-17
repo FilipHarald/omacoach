@@ -7,11 +7,12 @@ const output = [
   "SUPER ALT + SPACE → Apps menu",
   "SUPER + LEFT MOUSE BUTTON → Move window",
   "ALT + TAB → Focus next",
+  "CTRL ALT + DELETE → Close all windows",
   "SUPER + SPACE → Duplicate ignored"
 ].join("\n")
 
 const bindings = model.parseBindings(output)
-assert.equal(bindings.length, 3)
+assert.equal(bindings.length, 5)
 assert.deepEqual(model.normalizeModifiers("alt super shift"), ["SUPER", "SHIFT", "ALT"])
 
 const groups = model.groupBindings(bindings)
@@ -22,10 +23,16 @@ assert.deepEqual(model.branchCounts(groups, "SUPER"), [
 ])
 assert.deepEqual(model.cappedBindings(bindings, 2), {
   visible: bindings.slice(0, 2),
-  hiddenCount: 1
+  hiddenCount: 3
 })
 
 assert.equal(model.bindingsFor(groups, "SUPER ALT")[0].description, "Apps menu")
+assert.equal(model.bindingsFor(groups, "ALT")[0].description, "Focus next")
+assert.deepEqual(model.branchCounts(groups, "ALT"), [
+  { modifier: "SUPER", count: 1 },
+  { modifier: "CTRL", count: 1 }
+])
+assert.equal(model.bindingsFor(groups, "CTRL ALT")[0].description, "Close all windows")
 
 const displayBindings = model.groupForDisplay(model.parseBindings([
   "SUPER + 1 → Switch to workspace 1",

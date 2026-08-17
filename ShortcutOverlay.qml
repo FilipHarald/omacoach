@@ -537,7 +537,7 @@ Item {
       BorderSurface {
         id: card
 
-        width: Math.min(panel.width - Style.space(48), Math.max(Style.space(330), panel.desiredWidth))
+        width: Math.min(panel.width - Style.space(48), Math.max(panel.width * 0.5, panel.desiredWidth))
         height: content.implicitHeight + Style.spacing.panelPadding * 2 + borderTop + borderBottom
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottom: parent.bottom

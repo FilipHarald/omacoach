@@ -1,14 +1,15 @@
 # Omacoach
 
 Omacoach is an experimental Omarchy Quattro plugin that reveals available
-keyboard shortcuts while `SUPER` is held. Adding `SHIFT`, `CTRL`, or `ALT`
-filters the overlay to that exact modifier combination. The overlay never
-takes keyboard focus and disappears before Hyprland executes an action key.
+keyboard shortcuts while `SUPER`, `SHIFT`, `CTRL`, or `ALT` is held. Adding or
+removing modifiers filters the overlay to that exact combination. The overlay
+never takes keyboard focus and disappears before Hyprland executes an action
+key.
 
 ## Current prototype
 
 - Reads effective, described bindings from `omarchy-menu-keybindings --print`.
-- Shows only keyboard bindings containing `SUPER`.
+- Shows described keyboard bindings containing at least one supported modifier.
 - Waits 180 ms before appearing, avoiding flashes for shortcuts already in
   muscle memory.
 - Runs as a click-through, keyboard-focus-free layer-shell overlay.
@@ -28,9 +29,10 @@ so they are excluded from attempted-shortcut measurement.
 Measurement is local and enabled when the plugin is enabled. It can be paused,
 inspected, or reset without disabling shortcut hints. The overlay data and
 settings panes expose the same toggle and delete controls; hover them before
-releasing `SUPER` for passive hints, or press `SUPER+CTRL+K` to toggle a
-pinned, interactive popover. The hold overlay stays fully click-through because
-QML cannot suppress Hyprland's compositor-level `SUPER+mouse` move/resize bindings:
+releasing the held modifiers for passive hints, or press `SUPER+CTRL+K` to
+toggle a pinned, interactive popover. The hold overlay stays fully click-through
+because QML cannot suppress Hyprland's compositor-level `SUPER+mouse`
+move/resize bindings:
 
 ```bash
 omarchy-shell omacoach measurement off
