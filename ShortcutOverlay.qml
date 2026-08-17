@@ -384,7 +384,7 @@ Item {
       anchors { top: true; right: true; bottom: true; left: true }
       color: "transparent"
       exclusionMode: ExclusionMode.Ignore
-      mask: Region { item: root.pinned ? measurementPane : null }
+      mask: Region { item: root.pinned ? footerSections : null }
 
       WlrLayershell.namespace: "omacoach-shortcuts"
       WlrLayershell.layer: WlrLayer.Overlay
@@ -418,6 +418,7 @@ Item {
           spacing: Style.space(12)
 
           RowLayout {
+            visible: !root.pinned
             Layout.alignment: Qt.AlignHCenter
             spacing: Style.space(8)
 
@@ -450,6 +451,16 @@ Item {
                 branch: true
               }
             }
+          }
+
+          Text {
+            visible: root.pinned
+            Layout.alignment: Qt.AlignHCenter
+            text: "To exit: [SUPER CTRL K]"
+            color: Color.urgent
+            font.family: Style.font.family
+            font.pixelSize: Style.font.bodySmall
+            font.bold: true
           }
 
           Rectangle {
@@ -500,18 +511,20 @@ Item {
           }
 
           RowLayout {
+            id: footerSections
             Layout.fillWidth: true
             spacing: Style.space(18)
 
             ColumnLayout {
-              id: appSearchPane
+              id: coachPane
               readonly property var apps: root.searchedAppsSummary().slice(0, 3)
               Layout.fillWidth: true
+              Layout.preferredWidth: 1
               Layout.alignment: Qt.AlignTop
               spacing: Style.space(6)
 
               Text {
-                text: "App search"
+                text: "Coach"
                 color: Color.popups.text
                 font.family: Style.font.family
                 font.pixelSize: Style.font.bodySmall
@@ -519,7 +532,7 @@ Item {
               }
 
               Text {
-                visible: appSearchPane.apps.length === 0
+                visible: coachPane.apps.length === 0
                 text: "No apps selected after search yet"
                 color: Util.alpha(Color.popups.text, 0.5)
                 font.family: Style.font.family
@@ -527,7 +540,7 @@ Item {
               }
 
               Repeater {
-                model: appSearchPane.apps
+                model: coachPane.apps
                 RowLayout {
                   required property var modelData
                   Layout.fillWidth: true
@@ -559,13 +572,15 @@ Item {
             }
 
             ColumnLayout {
-              id: measurementPane
+              id: dataPane
               Layout.fillWidth: true
+              Layout.preferredWidth: 1
+              Layout.fillHeight: true
               Layout.alignment: Qt.AlignTop
               spacing: Style.space(5)
 
               Text {
-                text: "Measurement"
+                text: "Data"
                 color: Color.popups.text
                 font.family: Style.font.family
                 font.pixelSize: Style.font.bodySmall
@@ -586,27 +601,8 @@ Item {
                 font.pixelSize: Style.font.caption
               }
 
-              RowLayout {
-                Layout.fillWidth: true
-                Layout.preferredHeight: Style.space(28)
-                spacing: Style.space(10)
-
-                Text {
-                  Layout.fillWidth: true
-                  text: "Collect stats"
-                  color: root.pinned ? Color.popups.text : Util.alpha(Color.popups.text, 0.45)
-                  font.family: Style.font.family
-                  font.pixelSize: Style.font.bodySmall
-                }
-
-                ToggleSwitch {
-                  checked: root.measurementEnabled
-                  interactive: root.pinned
-                  foreground: Color.popups.text
-                  accent: Color.accent
-                  trackHeight: Style.space(18)
-                  onToggled: root.setMeasurementEnabled(!root.measurementEnabled)
-                }
+              Item {
+                Layout.fillHeight: true
               }
 
               Rectangle {
@@ -633,7 +629,7 @@ Item {
                   }
 
                   Text {
-                    text: "Delete collected stats"
+                    text: "Delete data"
                     color: !root.pinned
                       ? Util.alpha(Color.popups.text, 0.45)
                       : (deleteStatsControl.hovered ? Color.urgent : Color.popups.text)
@@ -651,20 +647,66 @@ Item {
                   onClicked: root.resetStats()
                 }
               }
+            }
+
+            Rectangle {
+              Layout.preferredWidth: 1
+              Layout.fillHeight: true
+              color: Util.alpha(Color.popups.border, 0.5)
+            }
+
+            ColumnLayout {
+              id: settingsPane
+              Layout.fillWidth: true
+              Layout.preferredWidth: 1
+              Layout.fillHeight: true
+              Layout.alignment: Qt.AlignTop
+              spacing: Style.space(8)
 
               RowLayout {
                 Layout.fillWidth: true
                 spacing: Style.space(8)
 
+                Text {
+                  text: "Settings"
+                  color: Color.popups.text
+                  font.family: Style.font.family
+                  font.pixelSize: Style.font.bodySmall
+                  font.bold: true
+                }
+
                 Keycap {
-                  label: "SUPER CTRL U"
+                  label: "SUPER CTRL K"
                 }
 
                 Text {
-                  text: root.pinned ? "Close panel" : "Open controls"
+                  text: "to open settings"
                   color: Util.alpha(Color.popups.text, 0.62)
                   font.family: Style.font.family
                   font.pixelSize: Style.font.caption
+                }
+              }
+
+              RowLayout {
+                Layout.fillWidth: true
+                Layout.preferredHeight: Style.space(28)
+                spacing: Style.space(10)
+
+                Text {
+                  Layout.fillWidth: true
+                  text: "Collect stats"
+                  color: root.pinned ? Color.popups.text : Util.alpha(Color.popups.text, 0.45)
+                  font.family: Style.font.family
+                  font.pixelSize: Style.font.bodySmall
+                }
+
+                ToggleSwitch {
+                  checked: root.measurementEnabled
+                  interactive: root.pinned
+                  foreground: Color.popups.text
+                  accent: Color.accent
+                  trackHeight: Style.space(18)
+                  onToggled: root.setMeasurementEnabled(!root.measurementEnabled)
                 }
               }
             }
