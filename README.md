@@ -62,6 +62,14 @@ The matcher cross-checks desktop-entry identity, launcher-capable `o.bind`
 definitions, and the effective binding list. It reports URL, command, Omarchy
 launcher, and default-application evidence rather than trusting labels alone.
 
+Pinned Coach rows expose three actions:
+
+- Ignore hides an app until **Reset coach decisions** is used in Data.
+- Add keybind prepends a commented, deduplicated app-specific draft to
+  `~/.config/hypr/bindings.lua`, then opens the normal Omarchy config editor.
+- Show keybinding opens the Omarchy keybindings selector narrowed to the
+  effective launcher bindings matched for that app.
+
 ## Development install
 
 ```bash

@@ -23,6 +23,8 @@ Item {
   property var keycodeMap: ({})
   property var attemptStats: ({})
   property var appSearchStats: ({})
+  property var coachDecisions: ({})
+  property var appBindingMatches: ({})
   property bool statsLoaded: false
   property bool measurementEnabled: true
   property string sortOrder: "none"
@@ -42,6 +44,7 @@ Item {
       keymapProcess.command = [pluginDir + "/scripts/keymap"]
       keymapProcess.running = true
     }
+    if (pluginDir) coachMatchRefreshTimer.restart()
   }
 
   function updateModel(modifiers) {
@@ -94,8 +97,11 @@ Item {
       ? parsed.bindings : ({})
     appSearchStats = parsed && parsed.version === 1 && parsed.appSearches && typeof parsed.appSearches === "object"
       ? parsed.appSearches : ({})
+    coachDecisions = parsed && parsed.version === 1 && parsed.coachDecisions && typeof parsed.coachDecisions === "object"
+      ? parsed.coachDecisions : ({})
     statsLoaded = true
     updateModel(currentModifierKey)
+    coachMatchRefreshTimer.restart()
   }
 
   function saveStats() {
@@ -106,7 +112,8 @@ Item {
       sortOrder: sortOrder,
       fillOrder: fillOrder,
       bindings: attemptStats,
-      appSearches: appSearchStats
+      appSearches: appSearchStats,
+      coachDecisions: coachDecisions
     }, null, 2) + "\n")
   }
 
@@ -133,8 +140,74 @@ Item {
   function resetStats() {
     attemptStats = ({})
     appSearchStats = ({})
+    coachDecisions = ({})
+    appBindingMatches = ({})
     if (sortOrder === "measurements") updateModel(currentModifierKey)
     scheduleStatsSave()
+  }
+
+  function ignoreCoachApp(desktopId) {
+    var id = String(desktopId || "").trim()
+    if (!id) return
+    var next = Object.assign({}, coachDecisions)
+    next[id] = { ignored: true }
+    coachDecisions = next
+    scheduleStatsSave()
+  }
+
+  function resetCoachDecisions() {
+    coachDecisions = ({})
+    scheduleStatsSave()
+  }
+
+  function coachDecisionCount() {
+    var count = 0
+    for (var desktopId in coachDecisions) {
+      if (coachDecisions[desktopId] && coachDecisions[desktopId].ignored === true) count++
+    }
+    return count
+  }
+
+  function loadAppBindingMatches(output) {
+    var parsed = null
+    try { parsed = JSON.parse(String(output || "")) } catch (e) { parsed = null }
+    var next = {}
+    if (Array.isArray(parsed)) {
+      for (var i = 0; i < parsed.length; i++) {
+        var app = parsed[i]
+        if (!app || !app.desktopId) continue
+        next[String(app.desktopId)] = Array.isArray(app.matches) ? app.matches : []
+      }
+    }
+    appBindingMatches = next
+  }
+
+  function refreshAppBindingMatches() {
+    if (!pluginDir || coachMatcherProcess.running) return
+    coachMatcherProcess.command = [pluginDir + "/scripts/match-searched-app-bindings", "--json"]
+    coachMatcherProcess.running = true
+  }
+
+  function openAddKeybind(app) {
+    if (!pinned || addKeybindProcess.running) return
+    togglePinned("")
+    addKeybindProcess.command = [
+      pluginDir + "/scripts/add-app-keybind",
+      String(app.desktopId || ""),
+      String(app.name || app.desktopId || "")
+    ]
+    addKeybindProcess.running = true
+  }
+
+  function openLearnKeybindings(app) {
+    if (!pinned || learnKeybindingsProcess.running) return
+    togglePinned("")
+    learnKeybindingsProcess.command = [
+      pluginDir + "/scripts/show-app-keybindings",
+      String(app.desktopId || ""),
+      String(app.name || app.desktopId || "")
+    ]
+    learnKeybindingsProcess.running = true
   }
 
   function recordAttempt(modifiers, keycode) {
@@ -199,15 +272,22 @@ Item {
     }
     appSearchStats = next
     scheduleStatsSave()
+    coachMatchRefreshTimer.restart()
     return true
   }
 
-  function searchedAppsSummary() {
+  function searchedAppsSummary(includeIgnored) {
     var apps = []
     for (var desktopId in appSearchStats) {
       var entry = appSearchStats[desktopId]
       if (!entry || Number(entry.count) <= 0) continue
-      apps.push({ desktopId: desktopId, name: String(entry.name || desktopId), count: Number(entry.count) })
+      if (includeIgnored !== true && coachDecisions[desktopId] && coachDecisions[desktopId].ignored === true) continue
+      apps.push({
+        desktopId: desktopId,
+        name: String(entry.name || desktopId),
+        count: Number(entry.count),
+        matches: appBindingMatches[desktopId] || []
+      })
     }
     apps.sort(function(left, right) {
       if (left.count !== right.count) return right.count - left.count
@@ -278,6 +358,7 @@ Item {
   Process {
     id: bindingProcess
     command: ["omarchy-menu-keybindings", "--print"]
+    onExited: coachMatchRefreshTimer.restart()
     stdout: StdioCollector {
       waitForEnd: true
       onStreamFinished: root.loadBindings(text)
@@ -302,6 +383,22 @@ Item {
     }
   }
 
+  Process {
+    id: coachMatcherProcess
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: root.loadAppBindingMatches(text)
+    }
+  }
+
+  Process {
+    id: addKeybindProcess
+  }
+
+  Process {
+    id: learnKeybindingsProcess
+  }
+
   FileView {
     id: statsFile
     path: root.statsPath
@@ -317,6 +414,13 @@ Item {
     interval: 200
     repeat: false
     onTriggered: root.saveStats()
+  }
+
+  Timer {
+    id: coachMatchRefreshTimer
+    interval: 400
+    repeat: false
+    onTriggered: root.refreshAppBindingMatches()
   }
 
   IpcHandler {
@@ -618,7 +722,9 @@ Item {
 
               Text {
                 visible: coachPane.apps.length === 0
-                text: "No apps selected after search yet"
+                text: root.searchedAppsSummary(true).length > 0
+                  ? "No active coach suggestions"
+                  : "No apps selected after search yet"
                 color: Util.alpha(Color.popups.text, 0.5)
                 font.family: Style.font.family
                 font.pixelSize: Style.font.caption
@@ -645,6 +751,41 @@ Item {
                     font.family: Style.font.family
                     font.pixelSize: Style.font.caption
                     font.bold: true
+                  }
+
+                  PanelActionButton {
+                    enabled: root.pinned
+                    iconText: "\uf070"
+                    tooltipText: "Ignore " + String(parent.modelData.name || parent.modelData.desktopId || "app")
+                    foreground: Util.alpha(Color.popups.text, 0.62)
+                    hoverColor: Color.popups.text
+                    fontSize: Style.font.caption
+                    size: Style.space(22)
+                    onClicked: root.ignoreCoachApp(parent.modelData.desktopId)
+                  }
+
+                  PanelActionButton {
+                    enabled: root.pinned
+                    iconText: "\uf067"
+                    tooltipText: "Add keybind"
+                    foreground: Util.alpha(Color.popups.text, 0.62)
+                    hoverColor: Color.accent
+                    fontSize: Style.font.caption
+                    size: Style.space(22)
+                    onClicked: root.openAddKeybind(parent.modelData)
+                  }
+
+                  PanelActionButton {
+                    enabled: root.pinned && parent.modelData.matches.length > 0
+                    iconText: "\uf11c"
+                    tooltipText: parent.modelData.matches.length > 0
+                      ? "Show keybinding: " + String(parent.modelData.matches[0].shortcut || "")
+                      : "No existing keybinding found"
+                    foreground: Util.alpha(Color.popups.text, 0.62)
+                    hoverColor: Color.accent
+                    fontSize: Style.font.caption
+                    size: Style.space(22)
+                    onClicked: root.openLearnKeybindings(parent.modelData)
                   }
                 }
               }
@@ -680,7 +821,7 @@ Item {
               }
 
               Text {
-                text: root.searchedAppsSummary().length + " searched apps · " + root.totalAppSelectionCount() + " selections"
+                text: root.searchedAppsSummary(true).length + " searched apps · " + root.totalAppSelectionCount() + " selections"
                 color: Util.alpha(Color.popups.text, 0.62)
                 font.family: Style.font.family
                 font.pixelSize: Style.font.caption
@@ -688,6 +829,49 @@ Item {
 
               Item {
                 Layout.fillHeight: true
+              }
+
+              Rectangle {
+                id: resetCoachControl
+                property bool hovered: false
+                Layout.fillWidth: true
+                Layout.preferredHeight: Style.space(28)
+                radius: Math.min(Style.cornerRadius, Style.space(5))
+                color: hovered ? Util.alpha(Color.popups.text, 0.08) : "transparent"
+
+                RowLayout {
+                  anchors.left: parent.left
+                  anchors.verticalCenter: parent.verticalCenter
+                  anchors.leftMargin: Style.space(6)
+                  spacing: Style.space(8)
+
+                  Text {
+                    text: "\uf2ea"
+                    color: root.pinned && root.coachDecisionCount() > 0
+                      ? Util.alpha(Color.popups.text, 0.62)
+                      : Util.alpha(Color.popups.text, 0.35)
+                    font.family: Style.font.family
+                    font.pixelSize: Style.font.bodySmall
+                  }
+
+                  Text {
+                    text: "Reset coach decisions"
+                    color: root.pinned && root.coachDecisionCount() > 0
+                      ? Util.alpha(Color.popups.text, 0.62)
+                      : Util.alpha(Color.popups.text, 0.35)
+                    font.family: Style.font.family
+                    font.pixelSize: Style.font.bodySmall
+                  }
+                }
+
+                MouseArea {
+                  anchors.fill: parent
+                  enabled: root.pinned && root.coachDecisionCount() > 0
+                  hoverEnabled: true
+                  cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+                  onContainsMouseChanged: resetCoachControl.hovered = containsMouse
+                  onClicked: root.resetCoachDecisions()
+                }
               }
 
               Rectangle {

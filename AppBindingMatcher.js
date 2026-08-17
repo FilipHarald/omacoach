@@ -111,6 +111,34 @@ function parseDesktopEntry(content, desktopId) {
   return entry
 }
 
+function luaQuote(value) {
+  return '"' + String(value || "").replace(/\\/g, "\\\\").replace(/"/g, '\\"') + '"'
+}
+
+function desktopLaunchCommand(value) {
+  return String(value || "")
+    .replace(/\s+%[fFuUdDnNickvm]/g, "")
+    .replace(/\s+--\s*$/, "")
+    .trim()
+}
+
+function bindingDraft(desktopId, name, desktop) {
+  const id = String(desktopId || "").replace(/[^A-Za-z0-9._-]+/g, "-")
+  const label = String(name || desktopId || "Application")
+  const exec = String(desktop && desktop.exec || "")
+  const executable = executableIn(exec)
+  const launchCommand = desktopLaunchCommand(exec) || String(desktopId || "application")
+  const webappUrl = executable === "omarchy-launch-webapp" ? urlsIn(exec)[0] : ""
+  const action = webappUrl
+    ? "{ webapp = " + luaQuote(webappUrl) + " }"
+    : "{ launch = " + luaQuote(launchCommand) + " }"
+  return [
+    "-- omacoach-draft:" + id,
+    "-- Choose a free key, remove the leading '-- ', then save:",
+    '-- o.bind("SUPER + SHIFT + ?", ' + luaQuote(label) + ", " + action + ")"
+  ].join("\n")
+}
+
 function reasonFor(app, binding, defaults) {
   const action = binding.action
   const appIds = [app.desktopId, app.name, app.desktop && app.desktop.name].map(normalize).filter(Boolean)
@@ -192,5 +220,7 @@ module.exports = {
   parseEffectiveBindings,
   parseLauncherBindings,
   parseDesktopEntry,
+  desktopLaunchCommand,
+  bindingDraft,
   matchSearchedApps
 }

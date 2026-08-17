@@ -1,0 +1,48 @@
+#!/usr/bin/env node
+
+const fs = require("node:fs")
+const os = require("node:os")
+const path = require("node:path")
+const { execFileSync } = require("node:child_process")
+const Matcher = require("../AppBindingMatcher.js")
+
+const desktopId = String(process.argv[2] || "").trim()
+const name = String(process.argv[3] || desktopId).trim()
+if (!desktopId) {
+  console.error("Usage: add-app-keybind <desktop-id> [name]")
+  process.exit(1)
+}
+
+function findDesktopFile() {
+  const filename = desktopId.replace(/\.desktop$/i, "") + ".desktop"
+  const directories = [
+    process.env.XDG_DATA_HOME || path.join(os.homedir(), ".local", "share"),
+    ...(process.env.XDG_DATA_DIRS || "/usr/local/share:/usr/share").split(":")
+  ]
+  for (const directory of directories) {
+    const applications = path.join(directory, "applications")
+    const exact = path.join(applications, filename)
+    if (fs.existsSync(exact)) return exact
+    if (!fs.existsSync(applications)) continue
+    const match = fs.readdirSync(applications).find(entry => entry.toLowerCase() === filename.toLowerCase())
+    if (match) return path.join(applications, match)
+  }
+  return ""
+}
+
+const bindingsPath = path.join(os.homedir(), ".config", "hypr", "bindings.lua")
+const desktopFile = findDesktopFile()
+const desktop = desktopFile
+  ? Matcher.parseDesktopEntry(fs.readFileSync(desktopFile, "utf8"), desktopId)
+  : null
+const draft = Matcher.bindingDraft(desktopId, name, desktop)
+const marker = draft.split("\n", 1)[0]
+const current = fs.readFileSync(bindingsPath, "utf8")
+
+if (!current.includes(marker)) {
+  const temporary = bindingsPath + ".omacoach-draft." + process.pid
+  fs.writeFileSync(temporary, draft + "\n\n" + current, { mode: fs.statSync(bindingsPath).mode })
+  fs.renameSync(temporary, bindingsPath)
+}
+
+execFileSync("omarchy-launch-config-editor", [bindingsPath], { stdio: "ignore" })

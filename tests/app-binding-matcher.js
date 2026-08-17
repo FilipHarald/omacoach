@@ -54,4 +54,21 @@ assert.deepEqual(byId["calendar-other"].matches, [])
 assert.equal(byId.obsidian.matches[0].evidence, "executable")
 assert.deepEqual(byId.slack.matches, [])
 
+assert.equal(
+  Matcher.bindingDraft("ChatGPT", "ChatGPT", desktops.ChatGPT),
+  [
+    "-- omacoach-draft:ChatGPT",
+    "-- Choose a free key, remove the leading '-- ', then save:",
+    '-- o.bind("SUPER + SHIFT + ?", "ChatGPT", { webapp = "https://chatgpt.com/" })'
+  ].join("\n")
+)
+assert.match(
+  Matcher.bindingDraft("signal", "Signal", desktops.signal),
+  /\{ launch = "signal-desktop" \}/
+)
+assert.equal(
+  Matcher.desktopLaunchCommand("env FOO=bar /opt/Buzz/buzz-desktop -- %U"),
+  "env FOO=bar /opt/Buzz/buzz-desktop"
+)
+
 console.log("app binding matcher tests passed")

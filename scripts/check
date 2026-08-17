@@ -4,6 +4,8 @@ set -euo pipefail
 
 test -x bin/toggle-panel
 test -x scripts/match-searched-app-bindings
+test -x scripts/add-app-keybind
+test -x scripts/show-app-keybindings
 node tests/model.js
 node tests/app-binding-matcher.js
 lua tests/observer.lua
