@@ -850,6 +850,7 @@ Item {
               readonly property var apps: root.searchedAppsSummary().slice(0, 3)
               Layout.fillWidth: true
               Layout.preferredWidth: 1
+              Layout.fillHeight: true
               Layout.alignment: Qt.AlignTop
               spacing: Style.space(6)
 
@@ -932,46 +933,6 @@ Item {
                   }
                 }
               }
-            }
-
-            Rectangle {
-              Layout.preferredWidth: 1
-              Layout.fillHeight: true
-              color: Util.alpha(Color.popups.border, 0.5)
-            }
-
-            ColumnLayout {
-              id: dataPane
-              Layout.fillWidth: true
-              Layout.preferredWidth: 1
-              Layout.fillHeight: true
-              Layout.alignment: Qt.AlignTop
-              spacing: Style.space(5)
-
-              Text {
-                Layout.alignment: Qt.AlignHCenter
-                text: "Data"
-                color: Util.alpha(Color.popups.text, 0.62)
-                font.family: Style.font.family
-                font.pixelSize: Style.font.bodySmall
-                font.bold: true
-              }
-
-              Text {
-                Layout.alignment: Qt.AlignHCenter
-                text: root.observedBindingCount() + " bindings observed · " + root.totalAttemptCount() + " attempts"
-                color: Util.alpha(Color.popups.text, 0.62)
-                font.family: Style.font.family
-                font.pixelSize: Style.font.caption
-              }
-
-              Text {
-                Layout.alignment: Qt.AlignHCenter
-                text: root.searchedAppsSummary(true).length + " searched apps · " + root.totalAppSelectionCount() + " selections"
-                color: Util.alpha(Color.popups.text, 0.62)
-                font.family: Style.font.family
-                font.pixelSize: Style.font.caption
-              }
 
               Item {
                 Layout.fillHeight: true
@@ -1018,46 +979,125 @@ Item {
                   onClicked: root.resetCoachDecisions()
                 }
               }
+            }
 
-              Rectangle {
-                id: deleteStatsControl
-                property bool hovered: false
+            Rectangle {
+              Layout.preferredWidth: 1
+              Layout.fillHeight: true
+              color: Util.alpha(Color.popups.border, 0.5)
+            }
+
+            ColumnLayout {
+              id: dataPane
+              Layout.fillWidth: true
+              Layout.preferredWidth: 1
+              Layout.fillHeight: true
+              Layout.alignment: Qt.AlignTop
+              spacing: Style.space(5)
+
+              Text {
+                Layout.alignment: Qt.AlignHCenter
+                text: "Data"
+                color: Util.alpha(Color.popups.text, 0.62)
+                font.family: Style.font.family
+                font.pixelSize: Style.font.bodySmall
+                font.bold: true
+              }
+
+              Text {
+                Layout.alignment: Qt.AlignHCenter
+                text: root.observedBindingCount() + " bindings observed · " + root.totalAttemptCount() + " attempts"
+                color: Util.alpha(Color.popups.text, 0.62)
+                font.family: Style.font.family
+                font.pixelSize: Style.font.caption
+              }
+
+              Text {
+                Layout.alignment: Qt.AlignHCenter
+                text: root.searchedAppsSummary(true).length + " searched apps · " + root.totalAppSelectionCount() + " selections"
+                color: Util.alpha(Color.popups.text, 0.62)
+                font.family: Style.font.family
+                font.pixelSize: Style.font.caption
+              }
+
+              Item {
+                Layout.fillHeight: true
+              }
+
+              RowLayout {
                 Layout.fillWidth: true
                 Layout.preferredHeight: Style.space(28)
-                radius: Math.min(Style.cornerRadius, Style.space(5))
-                color: hovered ? Util.alpha(Color.urgent, 0.13) : "transparent"
+                spacing: Style.space(8)
 
                 RowLayout {
-                  anchors.horizontalCenter: parent.horizontalCenter
-                  anchors.verticalCenter: parent.verticalCenter
+                  Layout.fillWidth: true
+                  Layout.preferredWidth: 1
+                  Layout.alignment: Qt.AlignVCenter
                   spacing: Style.space(8)
 
+                  Item { Layout.fillWidth: true }
+
                   Text {
-                    text: "\uf1f8"
-                    color: !root.pinned
-                      ? Util.alpha(Color.popups.text, 0.45)
-                      : (deleteStatsControl.hovered ? Color.urgent : Util.alpha(Color.popups.text, 0.62))
+                    text: "Collect data"
+                    color: Util.alpha(Color.popups.text, 0.62)
                     font.family: Style.font.family
                     font.pixelSize: Style.font.bodySmall
                   }
 
-                  Text {
-                    text: "Delete data"
-                    color: !root.pinned
-                      ? Util.alpha(Color.popups.text, 0.45)
-                      : (deleteStatsControl.hovered ? Color.urgent : Util.alpha(Color.popups.text, 0.62))
-                    font.family: Style.font.family
-                    font.pixelSize: Style.font.bodySmall
+                  ToggleSwitch {
+                    checked: root.measurementEnabled
+                    interactive: root.pinned
+                    foreground: Util.alpha(Color.popups.text, 0.62)
+                    accent: Color.accent
+                    trackHeight: Style.space(18)
+                    onToggled: root.setMeasurementEnabled(!root.measurementEnabled)
                   }
+
+                  Item { Layout.fillWidth: true }
                 }
 
-                MouseArea {
-                  anchors.fill: parent
-                  enabled: root.pinned
-                  hoverEnabled: true
-                  cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
-                  onContainsMouseChanged: deleteStatsControl.hovered = containsMouse
-                  onClicked: root.resetStats()
+                Rectangle {
+                  Layout.preferredWidth: 1
+                  Layout.fillHeight: true
+                  color: Util.alpha(Color.popups.border, 0.5)
+                }
+
+                Rectangle {
+                  id: deleteStatsControl
+                  property bool hovered: false
+                  Layout.fillWidth: true
+                  Layout.preferredWidth: 1
+                  Layout.fillHeight: true
+                  radius: Math.min(Style.cornerRadius, Style.space(5))
+                  color: hovered ? Util.alpha(Color.urgent, 0.13) : "transparent"
+
+                  RowLayout {
+                    anchors.centerIn: parent
+                    spacing: Style.space(8)
+
+                    Text {
+                      text: "\uf1f8"
+                      color: deleteStatsControl.hovered ? Color.urgent : Util.alpha(Color.popups.text, 0.62)
+                      font.family: Style.font.family
+                      font.pixelSize: Style.font.bodySmall
+                    }
+
+                    Text {
+                      text: "Delete data"
+                      color: deleteStatsControl.hovered ? Color.urgent : Util.alpha(Color.popups.text, 0.62)
+                      font.family: Style.font.family
+                      font.pixelSize: Style.font.bodySmall
+                    }
+                  }
+
+                  MouseArea {
+                    anchors.fill: parent
+                    enabled: root.pinned
+                    hoverEnabled: true
+                    cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+                    onContainsMouseChanged: deleteStatsControl.hovered = containsMouse
+                    onClicked: root.resetStats()
+                  }
                 }
               }
             }
@@ -1117,29 +1157,6 @@ Item {
                     trackHeight: Style.space(16)
                     onToggled: root.setTriggerModifier(parent.modelData, !checked)
                   }
-                }
-              }
-
-              RowLayout {
-                Layout.fillWidth: true
-                Layout.preferredHeight: Style.space(28)
-                spacing: Style.space(10)
-
-                Text {
-                  Layout.fillWidth: true
-                  text: "Collect data"
-                  color: root.pinned ? Util.alpha(Color.popups.text, 0.62) : Util.alpha(Color.popups.text, 0.45)
-                  font.family: Style.font.family
-                  font.pixelSize: Style.font.bodySmall
-                }
-
-                ToggleSwitch {
-                  checked: root.measurementEnabled
-                  interactive: root.pinned
-                  foreground: Util.alpha(Color.popups.text, 0.62)
-                  accent: Color.accent
-                  trackHeight: Style.space(18)
-                  onToggled: root.setMeasurementEnabled(!root.measurementEnabled)
                 }
               }
 
