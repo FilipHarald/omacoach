@@ -13,6 +13,8 @@ takes keyboard focus and disappears before Hyprland executes an action key.
   muscle memory.
 - Runs as a click-through, keyboard-focus-free layer-shell overlay.
 - Supports live modifier filtering and reloads after Hyprland config changes.
+- Collapses numeric workspace and bar-panel families into presentation-only
+  `[nbr]` rows while retaining independent underlying bindings and counts.
 - Resolves terminal key presses through the active XKB layout and stores only
   aggregate counts for chords that uniquely match the displayed inventory.
 - Labels those counts as attempted shortcuts, not confirmed invocations.

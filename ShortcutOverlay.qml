@@ -26,7 +26,7 @@ Item {
   property bool statsLoaded: false
   property bool measurementEnabled: true
   readonly property int revealDelayMs: 180
-  readonly property int maximumBindings: 24
+  readonly property int maximumBindings: 40
   readonly property var currentModifiers: ShortcutModel.normalizeModifiers(currentModifierKey)
   readonly property string pluginDir: manifest && manifest.__sourceDir ? String(manifest.__sourceDir) : ""
   readonly property string stateHome: Quickshell.env("XDG_STATE_HOME") || (Quickshell.env("HOME") + "/.local/state")
@@ -42,7 +42,7 @@ Item {
 
   function updateModel(modifiers) {
     currentModifierKey = ShortcutModel.modifierKey(modifiers) || "SUPER"
-    currentBindings = ShortcutModel.bindingsFor(bindingGroups, currentModifierKey)
+    currentBindings = ShortcutModel.groupForDisplay(ShortcutModel.bindingsFor(bindingGroups, currentModifierKey))
     modifierBranches = ShortcutModel.branchCounts(bindingGroups, currentModifierKey)
     var capped = ShortcutModel.cappedBindings(currentBindings, maximumBindings)
     visibleBindings = capped.visible
@@ -70,6 +70,7 @@ Item {
   }
 
   function attemptCount(binding) {
+    if (binding.grouped === true) return 0
     var entry = attemptStats[bindingSignature(binding)]
     return entry && Number(entry.count) > 0 ? Number(entry.count) : 0
   }
@@ -344,7 +345,7 @@ Item {
 
       readonly property bool isTarget: String(modelData.name || "") === root.targetMonitor
       readonly property int columns: root.columnCount(root.visibleBindings.length)
-      readonly property real desiredWidth: columns * Style.space(224)
+      readonly property real desiredWidth: columns * Style.space(270)
         + Math.max(0, columns - 1) * Style.space(22)
         + Style.spacing.panelPadding * 2
 
@@ -388,12 +389,43 @@ Item {
 
           RowLayout {
             Layout.alignment: Qt.AlignHCenter
-            spacing: Style.space(7)
+            spacing: Style.space(8)
 
             Repeater {
               model: root.currentModifiers
               ModifierChip { required property string modelData; label: modelData }
             }
+
+            Rectangle {
+              visible: root.modifierBranches.length > 0
+              Layout.preferredWidth: 1
+              Layout.preferredHeight: Style.space(20)
+              color: Util.alpha(Color.popups.border, 0.65)
+            }
+
+            Text {
+              visible: root.modifierBranches.length > 0
+              text: "Available"
+              color: Util.alpha(Color.popups.text, 0.52)
+              font.family: Style.font.family
+              font.pixelSize: Style.font.caption
+            }
+
+            Repeater {
+              model: root.modifierBranches
+              ModifierChip {
+                required property var modelData
+                label: String(modelData.modifier)
+                count: Number(modelData.count)
+                branch: true
+              }
+            }
+          }
+
+          Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 1
+            color: Util.alpha(Color.popups.border, 0.5)
           }
 
           GridLayout {
@@ -430,30 +462,6 @@ Item {
             font.family: Style.font.family
             font.pixelSize: Style.font.caption
           }
-
-          RowLayout {
-            visible: root.modifierBranches.length > 0
-            Layout.alignment: Qt.AlignHCenter
-            spacing: Style.space(9)
-
-            Text {
-              text: "Hold another modifier"
-              color: Util.alpha(Color.popups.text, 0.58)
-              font.family: Style.font.family
-              font.pixelSize: Style.font.caption
-            }
-
-            Repeater {
-              model: root.modifierBranches
-              ModifierChip {
-                required property var modelData
-                label: String(modelData.modifier)
-                count: Number(modelData.count)
-                branch: true
-              }
-            }
-          }
-
 
           Text {
             Layout.alignment: Qt.AlignHCenter

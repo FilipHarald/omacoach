@@ -8,7 +8,7 @@ Item {
   required property var binding
   property int attemptCount: 0
 
-  implicitWidth: Style.space(220)
+  implicitWidth: Style.space(266)
   implicitHeight: Style.space(32)
 
   RowLayout {

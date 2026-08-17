@@ -1,5 +1,11 @@
 var MODIFIER_ORDER = ["SUPER", "SHIFT", "CTRL", "ALT"]
 var BRANCH_ORDER = ["SHIFT", "CTRL", "ALT"]
+var DISPLAY_GROUPS = [
+  { pattern: /^Switch to workspace (?:10|[1-9])$/, description: "Switch to workspace [nbr]" },
+  { pattern: /^Move window to workspace (?:10|[1-9])$/, description: "Move window to workspace [nbr]" },
+  { pattern: /^Move window silently to workspace (?:10|[1-9])$/, description: "Move window silently to workspace [nbr]" },
+  { pattern: /^Bar panel [1-9]$/, description: "Bar panel [nbr]" }
+]
 
 function trim(value) {
   return String(value === undefined || value === null ? "" : value)
@@ -93,6 +99,53 @@ function bindingsFor(groups, modifiers) {
   return Array.isArray(bindings) ? bindings.slice() : []
 }
 
+function displayGroup(binding) {
+  if (!binding || !/^(?:[0-9])$/.test(trim(binding.key))) return null
+  for (var i = 0; i < DISPLAY_GROUPS.length; i++) {
+    if (DISPLAY_GROUPS[i].pattern.test(trim(binding.description))) return DISPLAY_GROUPS[i]
+  }
+  return null
+}
+
+function groupForDisplay(bindings) {
+  var source = Array.isArray(bindings) ? bindings : []
+  var counts = {}
+  var emitted = {}
+  var result = []
+
+  for (var i = 0; i < source.length; i++) {
+    var group = displayGroup(source[i])
+    if (!group) continue
+    var countKey = String(source[i].modifierKey || "") + "\u001f" + group.description
+    counts[countKey] = (counts[countKey] || 0) + 1
+  }
+
+  for (var j = 0; j < source.length; j++) {
+    var binding = source[j]
+    var display = displayGroup(binding)
+    if (!display) {
+      result.push(binding)
+      continue
+    }
+
+    var groupKey = String(binding.modifierKey || "") + "\u001f" + display.description
+    if (counts[groupKey] < 2) {
+      result.push(binding)
+    } else if (!emitted[groupKey]) {
+      emitted[groupKey] = true
+      result.push({
+        modifiers: binding.modifiers.slice(),
+        modifierKey: binding.modifierKey,
+        key: "[nbr]",
+        description: display.description,
+        grouped: true
+      })
+    }
+  }
+
+  return result
+}
+
 function branchCounts(groups, modifiers) {
   var current = normalizeModifiers(modifiers)
   var branches = []
@@ -123,6 +176,7 @@ if (typeof module !== "undefined") {
     parseBindings: parseBindings,
     groupBindings: groupBindings,
     bindingsFor: bindingsFor,
+    groupForDisplay: groupForDisplay,
     branchCounts: branchCounts,
     cappedBindings: cappedBindings
   }

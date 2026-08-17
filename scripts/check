@@ -4,7 +4,8 @@ set -euo pipefail
 
 node tests/model.js
 lua tests/observer.lua
-scripts/keymap | grep -q $'65\tSPACE'
+keymap_output=$(scripts/keymap)
+grep -q $'65\tSPACE' <<<"$keymap_output"
 luac -p hypr/observer.lua hypr/ObserverState.lua
 omarchy-plugin-validate .
 qmllint -I /usr/share/omarchy/shell ShortcutOverlay.qml components/*.qml
