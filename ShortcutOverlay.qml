@@ -1027,39 +1027,35 @@ Item {
               RowLayout {
                 Layout.fillWidth: true
                 Layout.preferredHeight: Style.space(28)
-                spacing: Style.space(8)
-
-                RowLayout {
-                  Layout.fillWidth: true
-                  Layout.preferredWidth: 1
-                  Layout.alignment: Qt.AlignVCenter
-                  spacing: Style.space(8)
-
-                  Item { Layout.fillWidth: true }
-
-                  Text {
-                    text: "Collect data"
-                    color: Util.alpha(Color.popups.text, 0.62)
-                    font.family: Style.font.family
-                    font.pixelSize: Style.font.bodySmall
-                  }
-
-                  ToggleSwitch {
-                    checked: root.measurementEnabled
-                    interactive: root.pinned
-                    foreground: Util.alpha(Color.popups.text, 0.62)
-                    accent: Color.accent
-                    trackHeight: Style.space(18)
-                    onToggled: root.setMeasurementEnabled(!root.measurementEnabled)
-                  }
-
-                  Item { Layout.fillWidth: true }
-                }
+                spacing: 0
 
                 Rectangle {
+                  Layout.fillWidth: true
                   Layout.preferredWidth: 1
                   Layout.fillHeight: true
-                  color: Util.alpha(Color.popups.border, 0.5)
+                  radius: Math.min(Style.cornerRadius, Style.space(5))
+                  color: "transparent"
+
+                  RowLayout {
+                    anchors.centerIn: parent
+                    spacing: Style.space(8)
+
+                    Text {
+                      text: "Collect data"
+                      color: Util.alpha(Color.popups.text, 0.62)
+                      font.family: Style.font.family
+                      font.pixelSize: Style.font.bodySmall
+                    }
+
+                    ToggleSwitch {
+                      checked: root.measurementEnabled
+                      interactive: root.pinned
+                      foreground: Util.alpha(Color.popups.text, 0.62)
+                      accent: Color.accent
+                      trackHeight: Style.space(18)
+                      onToggled: root.setMeasurementEnabled(!root.measurementEnabled)
+                    }
+                  }
                 }
 
                 Rectangle {
