@@ -19,7 +19,7 @@ takes keyboard focus and disappears before Hyprland executes an action key.
   aggregate counts for chords that uniquely match the displayed inventory.
 - Labels those counts as attempted shortcuts, not confirmed invocations.
 - Supports source-order, alphabetical, or measurement-count sorting with
-  row-first or column-first grid flow; source order and row-first are defaults.
+  row-first or column-first grid flow; source order and column-first are defaults.
 
 Mouse, wheel, `XF86`, `code:`, submap, and native multi-key chord bindings are
 not promised by this prototype. Hyprland does not expose a post-dispatch event,

@@ -26,7 +26,7 @@ Item {
   property bool statsLoaded: false
   property bool measurementEnabled: true
   property string sortOrder: "none"
-  property string fillOrder: "rows"
+  property string fillOrder: "columns"
   property bool pinned: false
   readonly property int revealDelayMs: 180
   readonly property int maximumBindings: 40
@@ -88,7 +88,7 @@ Item {
     measurementEnabled = !parsed || parsed.enabled !== false
     sortOrder = parsed && ["alphabetical", "measurements"].indexOf(parsed.sortOrder) !== -1
       ? parsed.sortOrder : "none"
-    fillOrder = parsed && parsed.fillOrder === "columns" ? "columns" : "rows"
+    fillOrder = parsed && parsed.fillOrder === "rows" ? "rows" : "columns"
     attemptStats = parsed && parsed.version === 1 && parsed.bindings && typeof parsed.bindings === "object"
       ? parsed.bindings : ({})
     appSearchStats = parsed && parsed.version === 1 && parsed.appSearches && typeof parsed.appSearches === "object"
@@ -125,7 +125,7 @@ Item {
   }
 
   function setFillOrder(order) {
-    fillOrder = order === "columns" ? "columns" : "rows"
+    fillOrder = order === "rows" ? "rows" : "columns"
     scheduleStatsSave()
   }
 
@@ -409,12 +409,10 @@ Item {
       color: "transparent"
       exclusionMode: ExclusionMode.Ignore
       mask: Region {
-        Region { item: root.pinned ? footerSections : null }
-        Region { item: root.pinned ? topCloseControl : null }
-        Region {
-          width: sortingDropdown.popupOpen || fillOrderDropdown.popupOpen ? panel.width : 0
-          height: sortingDropdown.popupOpen || fillOrderDropdown.popupOpen ? panel.height : 0
-        }
+        x: root.pinned ? card.x : 0
+        y: root.pinned ? card.y : 0
+        width: root.pinned ? card.width : 0
+        height: root.pinned ? panel.height - card.y : 0
       }
 
       WlrLayershell.namespace: "omacoach-shortcuts"
@@ -428,9 +426,7 @@ Item {
         height: content.implicitHeight + Style.spacing.panelPadding * 2 + borderTop + borderBottom
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottom: parent.bottom
-        anchors.bottomMargin: root.opened
-          ? (sortingDropdown.popupOpen || fillOrderDropdown.popupOpen ? Style.space(130) : Style.space(26))
-          : Style.space(12)
+        anchors.bottomMargin: root.pinned ? Style.space(130) : (root.opened ? Style.space(26) : Style.space(12))
         color: Color.popups.background
         borderSpec: Border.surfaceSpec("popups", "border", Color.popups.border, Math.max(1, Style.space(2)))
         radius: Style.cornerRadius
@@ -438,10 +434,6 @@ Item {
 
         Behavior on opacity {
           NumberAnimation { duration: root.opened ? 110 : 75; easing.type: Easing.OutCubic }
-        }
-
-        Behavior on anchors.bottomMargin {
-          NumberAnimation { duration: 110; easing.type: Easing.OutCubic }
         }
 
         ColumnLayout {
@@ -816,8 +808,8 @@ Item {
                 foreground: Color.popups.text
                 accent: Color.accent
                 options: [
-                  { value: "rows", label: "Rows first" },
-                  { value: "columns", label: "Columns first" }
+                  { value: "columns", label: "Columns first" },
+                  { value: "rows", label: "Rows first" }
                 ]
                 value: root.fillOrder
                 onChanged: function(value) { root.setFillOrder(value) }
