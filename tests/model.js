@@ -43,4 +43,23 @@ const singleDisplayBinding = model.groupForDisplay(model.parseBindings(
 ))
 assert.equal(singleDisplayBinding[0].key, "1")
 
+const sortableBindings = [
+  { key: "RETURN", description: "Terminal" },
+  { key: "W", description: "Close window" },
+  { key: "SPACE", description: "Omarchy menu" }
+]
+assert.deepEqual(
+  model.sortBindings(sortableBindings, "none").map(binding => binding.key),
+  ["RETURN", "W", "SPACE"]
+)
+assert.deepEqual(
+  model.sortBindings(sortableBindings, "alphabetical").map(binding => binding.key),
+  ["W", "SPACE", "RETURN"]
+)
+assert.deepEqual(
+  model.sortBindings(sortableBindings, "measurements", binding => ({ W: 2, SPACE: 7 }[binding.key] || 0))
+    .map(binding => binding.key),
+  ["SPACE", "W", "RETURN"]
+)
+
 console.log("model tests passed")

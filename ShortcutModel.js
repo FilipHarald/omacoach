@@ -146,6 +146,30 @@ function groupForDisplay(bindings) {
   return result
 }
 
+function sortBindings(bindings, order, countForBinding) {
+  var source = Array.isArray(bindings) ? bindings.slice() : []
+  if (order !== "alphabetical" && order !== "measurements") return source
+
+  var decorated = []
+  for (var i = 0; i < source.length; i++) decorated.push({ binding: source[i], index: i })
+
+  decorated.sort(function(left, right) {
+    if (order === "measurements") {
+      var leftCount = typeof countForBinding === "function" ? Number(countForBinding(left.binding)) || 0 : 0
+      var rightCount = typeof countForBinding === "function" ? Number(countForBinding(right.binding)) || 0 : 0
+      if (leftCount !== rightCount) return rightCount - leftCount
+    } else {
+      var byDescription = String(left.binding.description || "").localeCompare(String(right.binding.description || ""))
+      if (byDescription !== 0) return byDescription
+      var byKey = String(left.binding.key || "").localeCompare(String(right.binding.key || ""))
+      if (byKey !== 0) return byKey
+    }
+    return left.index - right.index
+  })
+
+  return decorated.map(function(entry) { return entry.binding })
+}
+
 function branchCounts(groups, modifiers) {
   var current = normalizeModifiers(modifiers)
   var branches = []
@@ -177,6 +201,7 @@ if (typeof module !== "undefined") {
     groupBindings: groupBindings,
     bindingsFor: bindingsFor,
     groupForDisplay: groupForDisplay,
+    sortBindings: sortBindings,
     branchCounts: branchCounts,
     cappedBindings: cappedBindings
   }
