@@ -19,6 +19,7 @@ Item {
   property var currentBindings: []
   property var visibleBindings: []
   property var modifierBranches: []
+  property var modifierStates: []
   property int hiddenBindingCount: 0
   property var keycodeMap: ({})
   property var attemptStats: ({})
@@ -54,6 +55,22 @@ Item {
       return root.attemptCount(binding)
     })
     modifierBranches = ShortcutModel.branchCounts(bindingGroups, currentModifierKey)
+    var branchCounts = {}
+    for (var i = 0; i < modifierBranches.length; i++) {
+      branchCounts[modifierBranches[i].modifier] = Number(modifierBranches[i].count) || 0
+    }
+    var states = []
+    var modifierOrder = ["SUPER", "SHIFT", "CTRL", "ALT"]
+    for (var j = 0; j < modifierOrder.length; j++) {
+      var modifier = modifierOrder[j]
+      var pressed = currentModifiers.indexOf(modifier) !== -1
+      states.push({
+        modifier: modifier,
+        pressed: pressed,
+        count: pressed ? -1 : (branchCounts[modifier] || 0)
+      })
+    }
+    modifierStates = states
     var capped = ShortcutModel.cappedBindings(currentBindings, maximumBindings)
     visibleBindings = capped.visible
     hiddenBindingCount = capped.hiddenCount
@@ -563,32 +580,13 @@ Item {
             spacing: Style.space(8)
 
             Repeater {
-              model: root.currentModifiers
-              ModifierChip { required property string modelData; label: modelData }
-            }
-
-            Rectangle {
-              visible: root.modifierBranches.length > 0
-              Layout.preferredWidth: 1
-              Layout.preferredHeight: Style.space(20)
-              color: Util.alpha(Color.popups.border, 0.65)
-            }
-
-            Text {
-              visible: root.modifierBranches.length > 0
-              text: "Available"
-              color: Util.alpha(Color.popups.text, 0.52)
-              font.family: Style.font.family
-              font.pixelSize: Style.font.caption
-            }
-
-            Repeater {
-              model: root.modifierBranches
+              model: root.modifierStates
               ModifierChip {
                 required property var modelData
                 label: String(modelData.modifier)
-                count: Number(modelData.count)
-                branch: true
+                count: !modelData.pressed && Number(modelData.count) > 0 ? Number(modelData.count) : -1
+                branch: !modelData.pressed && Number(modelData.count) > 0
+                muted: !modelData.pressed && Number(modelData.count) === 0
               }
             }
           }
@@ -673,6 +671,23 @@ Item {
             font.pixelSize: Style.font.caption
           }
 
+          RowLayout {
+            visible: root.pinned
+            Layout.alignment: Qt.AlignHCenter
+            spacing: Style.space(8)
+
+            Repeater {
+              model: root.modifierStates
+              ModifierChip {
+                required property var modelData
+                label: String(modelData.modifier)
+                count: !modelData.pressed && Number(modelData.count) > 0 ? Number(modelData.count) : -1
+                branch: !modelData.pressed && Number(modelData.count) > 0
+                muted: !modelData.pressed && Number(modelData.count) === 0
+              }
+            }
+          }
+
           Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: 1
@@ -680,6 +695,7 @@ Item {
           }
 
           RowLayout {
+            visible: !root.pinned
             Layout.fillWidth: true
             spacing: Style.space(8)
 
@@ -690,7 +706,7 @@ Item {
             }
 
             Text {
-              text: "to open settings"
+              text: "to open controls"
               color: Util.alpha(Color.popups.text, 0.5)
               font.family: Style.font.family
               font.pixelSize: Style.font.caption
@@ -700,7 +716,101 @@ Item {
           }
 
           RowLayout {
+            visible: !root.pinned
+            Layout.fillWidth: true
+            spacing: Style.space(18)
+
+            ColumnLayout {
+              Layout.fillWidth: true
+              Layout.preferredWidth: 1
+              Layout.alignment: Qt.AlignTop
+              spacing: Style.space(5)
+
+              Text {
+                text: "Coach"
+                color: Util.alpha(Color.popups.text, 0.62)
+                font.family: Style.font.family
+                font.pixelSize: Style.font.bodySmall
+                font.bold: true
+              }
+
+              Text {
+                visible: root.searchedAppsSummary().length > 0
+                text: "Available insights"
+                color: Util.alpha(Color.popups.text, 0.5)
+                font.family: Style.font.family
+                font.pixelSize: Style.font.caption
+              }
+            }
+
+            Rectangle {
+              Layout.preferredWidth: 1
+              Layout.fillHeight: true
+              color: Util.alpha(Color.popups.border, 0.5)
+            }
+
+            ColumnLayout {
+              Layout.fillWidth: true
+              Layout.preferredWidth: 1
+              Layout.alignment: Qt.AlignTop
+              spacing: Style.space(5)
+
+              Text {
+                text: "Data"
+                color: Util.alpha(Color.popups.text, 0.62)
+                font.family: Style.font.family
+                font.pixelSize: Style.font.bodySmall
+                font.bold: true
+              }
+
+              Text {
+                text: root.observedBindingCount() + " bindings observed · " + root.totalAttemptCount() + " attempts"
+                color: Util.alpha(Color.popups.text, 0.5)
+                font.family: Style.font.family
+                font.pixelSize: Style.font.caption
+              }
+
+              Text {
+                text: root.searchedAppsSummary(true).length + " searched apps · " + root.totalAppSelectionCount() + " selections"
+                color: Util.alpha(Color.popups.text, 0.5)
+                font.family: Style.font.family
+                font.pixelSize: Style.font.caption
+              }
+            }
+
+            Rectangle {
+              Layout.preferredWidth: 1
+              Layout.fillHeight: true
+              color: Util.alpha(Color.popups.border, 0.5)
+            }
+
+            ColumnLayout {
+              Layout.fillWidth: true
+              Layout.preferredWidth: 1
+              Layout.alignment: Qt.AlignTop
+              spacing: Style.space(5)
+
+              Text {
+                text: "Settings"
+                color: Util.alpha(Color.popups.text, 0.62)
+                font.family: Style.font.family
+                font.pixelSize: Style.font.bodySmall
+                font.bold: true
+              }
+
+              Text {
+                visible: root.measurementEnabled
+                text: "Data collecting is enabled"
+                color: Util.alpha(Color.popups.text, 0.5)
+                font.family: Style.font.family
+                font.pixelSize: Style.font.caption
+              }
+            }
+          }
+
+          RowLayout {
             id: footerSections
+            visible: root.pinned
             Layout.fillWidth: true
             spacing: Style.space(18)
 
