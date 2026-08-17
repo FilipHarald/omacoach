@@ -1,0 +1,99 @@
+#!/usr/bin/env node
+
+const fs = require("node:fs")
+const os = require("node:os")
+const path = require("node:path")
+const { execFileSync } = require("node:child_process")
+const Matcher = require("../AppBindingMatcher.js")
+
+function command(name, args) {
+  try {
+    return execFileSync(name, args || [], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim()
+  } catch (_) {
+    return ""
+  }
+}
+
+function filesUnder(directory) {
+  if (!directory || !fs.existsSync(directory)) return []
+  const files = []
+  for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+    const child = path.join(directory, entry.name)
+    if (entry.isDirectory()) files.push(...filesUnder(child))
+    else if (entry.isFile() && child.endsWith(".lua")) files.push(child)
+  }
+  return files
+}
+
+function findDesktopFile(desktopId, dataDirectories) {
+  const filename = String(desktopId || "").replace(/\.desktop$/i, "") + ".desktop"
+  for (const dataDirectory of dataDirectories) {
+    const applications = path.join(dataDirectory, "applications")
+    const exact = path.join(applications, filename)
+    if (fs.existsSync(exact)) return exact
+    if (!fs.existsSync(applications)) continue
+    const match = fs.readdirSync(applications).find(entry => entry.toLowerCase() === filename.toLowerCase())
+    if (match) return path.join(applications, match)
+  }
+  return ""
+}
+
+const args = process.argv.slice(2)
+const json = args.includes("--json")
+const stateIndex = args.indexOf("--state")
+const statePath = stateIndex >= 0 && args[stateIndex + 1]
+  ? args[stateIndex + 1]
+  : path.join(process.env.XDG_STATE_HOME || path.join(os.homedir(), ".local", "state"), "omacoach", "attempts.json")
+
+if (!fs.existsSync(statePath)) {
+  console.error("No Omacoach data found at " + statePath)
+  process.exit(1)
+}
+
+const state = JSON.parse(fs.readFileSync(statePath, "utf8"))
+const effectiveBindings = Matcher.parseEffectiveBindings(command("omarchy-menu-keybindings", ["--print"]))
+const luaFiles = filesUnder("/usr/share/omarchy/default/hypr/bindings")
+const userBindings = path.join(os.homedir(), ".config", "hypr", "bindings.lua")
+if (fs.existsSync(userBindings)) luaFiles.push(userBindings)
+
+const launcherBindings = []
+for (const file of luaFiles) {
+  launcherBindings.push(...Matcher.parseLauncherBindings(fs.readFileSync(file, "utf8"), file))
+}
+
+const dataDirectories = [
+  process.env.XDG_DATA_HOME || path.join(os.homedir(), ".local", "share"),
+  ...(process.env.XDG_DATA_DIRS || "/usr/local/share:/usr/share").split(":")
+]
+const desktops = {}
+for (const desktopId of Object.keys(state.appSearches || {})) {
+  const file = findDesktopFile(desktopId, dataDirectories)
+  if (file) desktops[desktopId] = Matcher.parseDesktopEntry(fs.readFileSync(file, "utf8"), desktopId)
+}
+
+const results = Matcher.matchSearchedApps({
+  searches: state.appSearches || {},
+  effectiveBindings,
+  launcherBindings,
+  desktops,
+  defaults: {
+    defaultBrowserId: command("xdg-mime", ["query", "default", "x-scheme-handler/https"]),
+    defaultTerminal: command("omarchy-default-terminal"),
+    defaultEditor: command("omarchy-default-editor")
+  }
+})
+
+if (json) {
+  process.stdout.write(JSON.stringify(results, null, 2) + "\n")
+} else {
+  for (const app of results) {
+    if (app.matches.length === 0) {
+      console.log(app.name + ": no effective launcher binding found")
+      continue
+    }
+    console.log(app.name + ":")
+    for (const match of app.matches) {
+      console.log("  " + match.shortcut + " -> " + match.description + " [" + match.evidence + "]")
+    }
+  }
+}

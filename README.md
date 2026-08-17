@@ -51,6 +51,17 @@ menu search. It does not receive or retain the search query:
 omarchy-shell omacoach searchedApps
 ```
 
+Prototype existing-binding detection without changing the UI:
+
+```bash
+./scripts/match-searched-app-bindings
+./scripts/match-searched-app-bindings --json
+```
+
+The matcher cross-checks desktop-entry identity, launcher-capable `o.bind`
+definitions, and the effective binding list. It reports URL, command, Omarchy
+launcher, and default-application evidence rather than trusting labels alone.
+
 ## Development install
 
 ```bash

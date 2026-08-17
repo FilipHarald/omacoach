@@ -3,7 +3,9 @@
 set -euo pipefail
 
 test -x bin/toggle-panel
+test -x scripts/match-searched-app-bindings
 node tests/model.js
+node tests/app-binding-matcher.js
 lua tests/observer.lua
 keymap_output=$(scripts/keymap)
 grep -q $'65\tSPACE' <<<"$keymap_output"
