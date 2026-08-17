@@ -22,6 +22,7 @@ Item {
   property int hiddenBindingCount: 0
   property var keycodeMap: ({})
   property var attemptStats: ({})
+  property var appSearchStats: ({})
   property bool statsLoaded: false
   property bool measurementEnabled: true
   readonly property int revealDelayMs: 180
@@ -80,6 +81,8 @@ Item {
     measurementEnabled = !parsed || parsed.enabled !== false
     attemptStats = parsed && parsed.version === 1 && parsed.bindings && typeof parsed.bindings === "object"
       ? parsed.bindings : ({})
+    appSearchStats = parsed && parsed.version === 1 && parsed.appSearches && typeof parsed.appSearches === "object"
+      ? parsed.appSearches : ({})
     statsLoaded = true
   }
 
@@ -88,7 +91,8 @@ Item {
     statsFile.setText(JSON.stringify({
       version: 1,
       enabled: measurementEnabled,
-      bindings: attemptStats
+      bindings: attemptStats,
+      appSearches: appSearchStats
     }, null, 2) + "\n")
   }
 
@@ -103,6 +107,7 @@ Item {
 
   function resetStats() {
     attemptStats = ({})
+    appSearchStats = ({})
     scheduleStatsSave()
   }
 
@@ -143,6 +148,37 @@ Item {
       if (attemptStats[signature]) count += Number(attemptStats[signature].count) || 0
     }
     return count
+  }
+
+  function recordSearchedApp(desktopId, name) {
+    if (!statsLoaded || !measurementEnabled) return false
+    var id = String(desktopId || "").trim()
+    var label = String(name || "").trim()
+    if (!id || !label) return false
+
+    var next = Object.assign({}, appSearchStats)
+    var previous = next[id]
+    next[id] = {
+      name: label,
+      count: (previous ? Number(previous.count) : 0) + 1
+    }
+    appSearchStats = next
+    scheduleStatsSave()
+    return true
+  }
+
+  function searchedAppsSummary() {
+    var apps = []
+    for (var desktopId in appSearchStats) {
+      var entry = appSearchStats[desktopId]
+      if (!entry || Number(entry.count) <= 0) continue
+      apps.push({ desktopId: desktopId, name: String(entry.name || desktopId), count: Number(entry.count) })
+    }
+    apps.sort(function(left, right) {
+      if (left.count !== right.count) return right.count - left.count
+      return left.name.localeCompare(right.name)
+    })
+    return apps
   }
 
   function armHints(modifiers, monitor) {
@@ -265,6 +301,14 @@ Item {
         observedBindings: root.observedBindingCount(),
         totalAttempts: root.totalAttemptCount()
       })
+    }
+
+    function searchedApp(desktopId: string, name: string): string {
+      return root.recordSearchedApp(desktopId, name) ? "recorded" : "ignored"
+    }
+
+    function searchedApps(): string {
+      return JSON.stringify(root.searchedAppsSummary())
     }
 
     function reload(): string {
@@ -419,6 +463,18 @@ Item {
                 : root.observedBindingCount() + " bindings observed · " + root.totalAttemptCount() + " attempts")
               : "Shortcut measurement paused"
             color: Util.alpha(Color.popups.text, 0.48)
+            font.family: Style.font.family
+            font.pixelSize: Style.font.caption
+          }
+
+
+          Text {
+            readonly property var topApp: root.searchedAppsSummary().length > 0
+              ? root.searchedAppsSummary()[0] : null
+            visible: topApp !== null
+            Layout.alignment: Qt.AlignHCenter
+            text: topApp ? ("Most selected after search · " + topApp.name + " ×" + topApp.count) : ""
+            color: Util.alpha(Color.accent, 0.72)
             font.family: Style.font.family
             font.pixelSize: Style.font.caption
           }

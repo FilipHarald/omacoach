@@ -1,0 +1,16 @@
+diff --git a/Menu.qml b/Menu.qml
+--- a/Menu.qml
++++ b/Menu.qml
+@@ -734,10 +734,13 @@ Item {
+     } else if (row.kind === "app") {
+       var appId = row.appId
+       var label = row.label
++      var selectedAfterSearch = String(filterText || "").trim() !== ""
+       applySerial = requestSerial
+       opened = false
+       filterText = ""
++      if (selectedAfterSearch)
++        Quickshell.execDetached(["omarchy-shell", "-q", "omacoach", "searchedApp", appId, label])
+       if (root.appLibrary) root.appLibrary.launch(appId, label)
+     } else {
+       root.applySelected(row.itemId, row.action)

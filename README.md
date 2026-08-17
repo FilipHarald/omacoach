@@ -35,6 +35,14 @@ The plugin stores only a count per matched binding in
 `${XDG_STATE_HOME:-~/.local/state}/omacoach/attempts.json`. It stores no raw
 keys, unmatched chords, timestamps, focused applications, or event history.
 
+The searched-app experiment can record a stable desktop-entry ID and display
+name only when the user explicitly selects an app after a non-empty Omarchy
+menu search. It does not receive or retain the search query:
+
+```bash
+omarchy-shell omacoach searchedApps
+```
+
 ## Development install
 
 ```bash
