@@ -2,6 +2,7 @@
 
 set -euo pipefail
 
+test -x bin/toggle-panel
 node tests/model.js
 lua tests/observer.lua
 keymap_output=$(scripts/keymap)

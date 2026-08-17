@@ -25,8 +25,7 @@ Item {
   property var appSearchStats: ({})
   property bool statsLoaded: false
   property bool measurementEnabled: true
-  property bool controlsHovered: false
-  property bool hidePending: false
+  property bool pinned: false
   readonly property int revealDelayMs: 180
   readonly property int maximumBindings: 40
   readonly property var currentModifiers: ShortcutModel.normalizeModifiers(currentModifierKey)
@@ -193,34 +192,36 @@ Item {
   }
 
   function armHints(modifiers, monitor) {
+    if (pinned) return
     targetMonitor = String(monitor || "")
     updateModel(modifiers)
-    hidePending = false
     opened = false
     revealTimer.restart()
   }
 
   function updateHints(modifiers, monitor) {
+    if (pinned) return
     if (monitor) targetMonitor = String(monitor)
     updateModel(modifiers)
   }
 
   function hideHints() {
     revealTimer.stop()
-    if (opened && controlsHovered) {
-      hidePending = true
-      return
-    }
-    hidePending = false
+    if (pinned) return
     opened = false
   }
 
-  function setControlsHovered(hovered) {
-    controlsHovered = hovered === true
-    if (!controlsHovered && hidePending) {
-      hidePending = false
+  function togglePinned(monitor) {
+    revealTimer.stop()
+    if (pinned) {
+      pinned = false
       opened = false
+      return
     }
+    targetMonitor = String(monitor || targetMonitor)
+    updateModel("SUPER")
+    pinned = true
+    opened = true
   }
 
   function reloadBindings() {
@@ -336,6 +337,11 @@ Item {
       return JSON.stringify(root.searchedAppsSummary())
     }
 
+    function togglePinned(monitor: string): string {
+      root.togglePinned(monitor)
+      return root.pinned ? "open" : "closed"
+    }
+
     function reload(): string {
       root.reloadBindings()
       return "ok"
@@ -350,7 +356,7 @@ Item {
     }
 
     function state(): string {
-      return root.opened ? root.currentModifierKey : "closed"
+      return root.pinned ? "pinned" : (root.opened ? root.currentModifierKey : "closed")
     }
   }
 
@@ -378,7 +384,7 @@ Item {
       anchors { top: true; right: true; bottom: true; left: true }
       color: "transparent"
       exclusionMode: ExclusionMode.Ignore
-      mask: Region { item: measurementPane }
+      mask: Region { item: root.pinned ? measurementPane : null }
 
       WlrLayershell.namespace: "omacoach-shortcuts"
       WlrLayershell.layer: WlrLayer.Overlay
@@ -558,10 +564,6 @@ Item {
               Layout.alignment: Qt.AlignTop
               spacing: Style.space(5)
 
-              HoverHandler {
-                onHoveredChanged: root.setControlsHovered(hovered)
-              }
-
               Text {
                 text: "Measurement"
                 color: Color.popups.text
@@ -584,15 +586,6 @@ Item {
                 font.pixelSize: Style.font.caption
               }
 
-              Text {
-                visible: !root.hidePending
-                text: "Release SUPER to interact"
-                color: Util.alpha(Color.accent, 0.78)
-                font.family: Style.font.family
-                font.pixelSize: Style.font.caption
-                font.bold: true
-              }
-
               RowLayout {
                 Layout.fillWidth: true
                 Layout.preferredHeight: Style.space(28)
@@ -601,14 +594,14 @@ Item {
                 Text {
                   Layout.fillWidth: true
                   text: "Collect stats"
-                  color: root.hidePending ? Color.popups.text : Util.alpha(Color.popups.text, 0.45)
+                  color: root.pinned ? Color.popups.text : Util.alpha(Color.popups.text, 0.45)
                   font.family: Style.font.family
                   font.pixelSize: Style.font.bodySmall
                 }
 
                 ToggleSwitch {
                   checked: root.measurementEnabled
-                  interactive: root.hidePending
+                  interactive: root.pinned
                   foreground: Color.popups.text
                   accent: Color.accent
                   trackHeight: Style.space(18)
@@ -632,7 +625,7 @@ Item {
 
                   Text {
                     text: "\uf1f8"
-                    color: !root.hidePending
+                    color: !root.pinned
                       ? Util.alpha(Color.popups.text, 0.45)
                       : (deleteStatsControl.hovered ? Color.urgent : Color.popups.text)
                     font.family: Style.font.family
@@ -641,7 +634,7 @@ Item {
 
                   Text {
                     text: "Delete collected stats"
-                    color: !root.hidePending
+                    color: !root.pinned
                       ? Util.alpha(Color.popups.text, 0.45)
                       : (deleteStatsControl.hovered ? Color.urgent : Color.popups.text)
                     font.family: Style.font.family
@@ -651,11 +644,27 @@ Item {
 
                 MouseArea {
                   anchors.fill: parent
-                  enabled: root.hidePending
+                  enabled: root.pinned
                   hoverEnabled: true
                   cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
                   onContainsMouseChanged: deleteStatsControl.hovered = containsMouse
                   onClicked: root.resetStats()
+                }
+              }
+
+              RowLayout {
+                Layout.fillWidth: true
+                spacing: Style.space(8)
+
+                Keycap {
+                  label: "SUPER CTRL U"
+                }
+
+                Text {
+                  text: root.pinned ? "Close panel" : "Open controls"
+                  color: Util.alpha(Color.popups.text, 0.62)
+                  font.family: Style.font.family
+                  font.pixelSize: Style.font.caption
                 }
               }
             }

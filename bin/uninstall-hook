@@ -4,17 +4,21 @@ set -euo pipefail
 
 START_MARKER="-- omacoach:start"
 END_MARKER="-- omacoach:end"
+BIND_START_MARKER="-- omacoach-binding:start"
+BIND_END_MARKER="-- omacoach-binding:end"
 BINDINGS_FILE="$HOME/.config/hypr/bindings.lua"
 
 [[ -f "$BINDINGS_FILE" ]] || exit 0
 
 start_count=$(grep -Fxc -- "$START_MARKER" "$BINDINGS_FILE" || true)
 end_count=$(grep -Fxc -- "$END_MARKER" "$BINDINGS_FILE" || true)
-if ((start_count == 0 && end_count == 0)); then
-  printf 'Omacoach observer is not installed.\n'
+bind_start_count=$(grep -Fxc -- "$BIND_START_MARKER" "$BINDINGS_FILE" || true)
+bind_end_count=$(grep -Fxc -- "$BIND_END_MARKER" "$BINDINGS_FILE" || true)
+if ((start_count == 0 && end_count == 0 && bind_start_count == 0 && bind_end_count == 0)); then
+  printf 'Omacoach integration is not installed.\n'
   exit 0
 fi
-if ((start_count != 1 || end_count != 1)); then
+if ((start_count != end_count || start_count > 1 || bind_start_count != bind_end_count || bind_start_count > 1)); then
   printf 'uninstall-hook: marker block is incomplete; no configuration was changed\n' >&2
   exit 1
 fi
@@ -24,7 +28,9 @@ temp_file=$(mktemp "$BINDINGS_FILE.omacoach.XXXXXX")
 trap 'rm -f -- "$temp_file"' EXIT
 cp -p -- "$BINDINGS_FILE" "$backup"
 
-sed "/^${START_MARKER}$/,/^${END_MARKER}$/d" "$BINDINGS_FILE" >"$temp_file"
+sed -e "/^${START_MARKER}$/,/^${END_MARKER}$/d" \
+  -e "/^${BIND_START_MARKER}$/,/^${BIND_END_MARKER}$/d" \
+  "$BINDINGS_FILE" >"$temp_file"
 chmod --reference="$BINDINGS_FILE" "$temp_file"
 luac -p "$temp_file"
 mv -- "$temp_file" "$BINDINGS_FILE"
@@ -39,4 +45,4 @@ if [[ -n "$config_errors" ]]; then
   exit 1
 fi
 
-printf 'Removed Omacoach observer. Backup: %s\n' "$backup"
+printf 'Removed Omacoach observer and panel binding. Backup: %s\n' "$backup"

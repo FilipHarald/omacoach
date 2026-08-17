@@ -26,7 +26,8 @@ so they are excluded from attempted-shortcut measurement.
 Measurement is local and enabled when the plugin is enabled. It can be paused,
 inspected, or reset without disabling shortcut hints. The overlay measurement
 pane exposes the same toggle and delete controls; hover it before releasing
-`SUPER` to keep the pane open, then release the modifier before clicking. QML
+`SUPER` for passive hints, or press `SUPER+CTRL+U` to toggle a pinned,
+interactive popover. The hold overlay stays fully click-through because QML
 cannot suppress Hyprland's compositor-level `SUPER+mouse` move/resize bindings:
 
 ```bash
@@ -59,7 +60,8 @@ omarchy plugin enable omacoach
 
 The observer installer makes a timestamped backup of
 `~/.config/hypr/bindings.lua`, adds one marked loader block, reloads Hyprland,
-and rolls back if validation fails.
+adds a separate marked `SUPER+CTRL+U` panel binding, reloads Hyprland, and
+rolls back if validation fails.
 
 Remove the observer before removing the plugin:
 

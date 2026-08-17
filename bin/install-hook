@@ -5,6 +5,8 @@ set -euo pipefail
 PLUGIN_ID="omacoach"
 START_MARKER="-- omacoach:start"
 END_MARKER="-- omacoach:end"
+BIND_START_MARKER="-- omacoach-binding:start"
+BIND_END_MARKER="-- omacoach-binding:end"
 BINDINGS_FILE="$HOME/.config/hypr/bindings.lua"
 PLUGIN_DIR="$HOME/.config/omarchy/plugins/$PLUGIN_ID"
 OBSERVER_FILE="$PLUGIN_DIR/hypr/observer.lua"
@@ -20,7 +22,8 @@ command -v omarchy-plugin-validate >/dev/null 2>&1 || fail "Omarchy plugin valid
 command -v hyprctl >/dev/null 2>&1 || fail "hyprctl is required; no configuration was changed"
 command -v luac >/dev/null 2>&1 || fail "luac is required; no configuration was changed"
 [[ -f "$OMARCHY_ROOT/shell/services/PluginRegistry.qml" ]] || fail "Omarchy Quattro is required; no configuration was changed"
-[[ -f "$PLUGIN_DIR/manifest.json" && -f "$OBSERVER_FILE" ]] || fail "plugin is not installed at $PLUGIN_DIR; no configuration was changed"
+[[ -f "$PLUGIN_DIR/manifest.json" && -f "$OBSERVER_FILE" && -x "$PLUGIN_DIR/bin/toggle-panel" ]] ||
+  fail "plugin is incomplete at $PLUGIN_DIR; no configuration was changed"
 [[ -f "$BINDINGS_FILE" ]] || fail "$BINDINGS_FILE does not exist; no configuration was changed"
 
 PLUGIN_SOURCE=$(readlink -f "$PLUGIN_DIR")
@@ -33,12 +36,23 @@ probe=$(hyprctl repl 'return type(hl.on), type(hl.timer), type(hl.is_key_down), 
 
 start_count=$(grep -Fxc -- "$START_MARKER" "$BINDINGS_FILE" || true)
 end_count=$(grep -Fxc -- "$END_MARKER" "$BINDINGS_FILE" || true)
-if ((start_count == 1 && end_count == 1)); then
-  printf 'Omacoach observer is already installed.\n'
+bind_start_count=$(grep -Fxc -- "$BIND_START_MARKER" "$BINDINGS_FILE" || true)
+bind_end_count=$(grep -Fxc -- "$BIND_END_MARKER" "$BINDINGS_FILE" || true)
+if ((start_count != end_count || start_count > 1)); then
+  fail "found an incomplete Omacoach marker block; no configuration was changed"
+fi
+if ((bind_start_count != bind_end_count || bind_start_count > 1)); then
+  fail "found an incomplete Omacoach binding marker block; no configuration was changed"
+fi
+if ((start_count == 1 && bind_start_count == 1)); then
+  printf 'Omacoach observer and panel binding are already installed.\n'
   exit 0
 fi
-if ((start_count != 0 || end_count != 0)); then
-  fail "found an incomplete Omacoach marker block; no configuration was changed"
+if ((bind_start_count == 0)); then
+  existing_bindings=$(omarchy-menu-keybindings --print)
+  if grep -Fq 'SUPER CTRL + U' <<<"$existing_bindings"; then
+    fail "SUPER CTRL + U is already bound; no configuration was changed"
+  fi
 fi
 
 timestamp=$(date -u +%Y%m%d%H%M%S)
@@ -61,7 +75,8 @@ trap cleanup EXIT
 cp -p -- "$BINDINGS_FILE" "$backup"
 cp -p -- "$BINDINGS_FILE" "$temp_file"
 
-cat >>"$temp_file" <<'LUA'
+if ((start_count == 0)); then
+  cat >>"$temp_file" <<'LUA'
 
 -- omacoach:start
 do
@@ -78,6 +93,20 @@ do
 end
 -- omacoach:end
 LUA
+fi
+
+if ((bind_start_count == 0)); then
+  cat >>"$temp_file" <<'LUA'
+
+-- omacoach-binding:start
+do
+  local home = os.getenv("HOME")
+  local command = home and (home .. "/.config/omarchy/plugins/omacoach/bin/toggle-panel")
+  if command then o.bind("SUPER + CTRL + U", "Toggle Omacoach", command) end
+end
+-- omacoach-binding:end
+LUA
+fi
 
 chmod --reference="$BINDINGS_FILE" "$temp_file"
 luac -p "$temp_file" || fail "generated bindings.lua is invalid"
@@ -90,4 +119,4 @@ config_errors=$(hyprctl configerrors 2>/dev/null || true)
 
 changed=0
 trap - EXIT
-printf 'Installed Omacoach observer. Backup: %s\n' "$backup"
+printf 'Installed Omacoach observer and SUPER CTRL U panel binding. Backup: %s\n' "$backup"

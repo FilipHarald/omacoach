@@ -1,0 +1,6 @@
+#!/bin/bash
+
+set -euo pipefail
+
+monitor=$(hyprctl activeworkspace -j | jq -r '.monitor // ""')
+omarchy-shell omacoach togglePinned "$monitor"
