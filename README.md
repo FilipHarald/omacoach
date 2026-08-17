@@ -24,7 +24,10 @@ not promised by this prototype. Hyprland does not expose a post-dispatch event,
 so they are excluded from attempted-shortcut measurement.
 
 Measurement is local and enabled when the plugin is enabled. It can be paused,
-inspected, or reset without disabling shortcut hints:
+inspected, or reset without disabling shortcut hints. The overlay measurement
+pane exposes the same toggle and delete controls; hover it before releasing
+`SUPER` to keep the pane open, then release the modifier before clicking. QML
+cannot suppress Hyprland's compositor-level `SUPER+mouse` move/resize bindings:
 
 ```bash
 omarchy-shell omacoach measurement off

@@ -25,6 +25,8 @@ Item {
   property var appSearchStats: ({})
   property bool statsLoaded: false
   property bool measurementEnabled: true
+  property bool controlsHovered: false
+  property bool hidePending: false
   readonly property int revealDelayMs: 180
   readonly property int maximumBindings: 40
   readonly property var currentModifiers: ShortcutModel.normalizeModifiers(currentModifierKey)
@@ -151,6 +153,14 @@ Item {
     return count
   }
 
+  function totalAppSelectionCount() {
+    var count = 0
+    for (var desktopId in appSearchStats) {
+      if (appSearchStats[desktopId]) count += Number(appSearchStats[desktopId].count) || 0
+    }
+    return count
+  }
+
   function recordSearchedApp(desktopId, name) {
     if (!statsLoaded || !measurementEnabled) return false
     var id = String(desktopId || "").trim()
@@ -185,6 +195,7 @@ Item {
   function armHints(modifiers, monitor) {
     targetMonitor = String(monitor || "")
     updateModel(modifiers)
+    hidePending = false
     opened = false
     revealTimer.restart()
   }
@@ -196,7 +207,20 @@ Item {
 
   function hideHints() {
     revealTimer.stop()
+    if (opened && controlsHovered) {
+      hidePending = true
+      return
+    }
+    hidePending = false
     opened = false
+  }
+
+  function setControlsHovered(hovered) {
+    controlsHovered = hovered === true
+    if (!controlsHovered && hidePending) {
+      hidePending = false
+      opened = false
+    }
   }
 
   function reloadBindings() {
@@ -354,7 +378,7 @@ Item {
       anchors { top: true; right: true; bottom: true; left: true }
       color: "transparent"
       exclusionMode: ExclusionMode.Ignore
-      mask: Region {}
+      mask: Region { item: measurementPane }
 
       WlrLayershell.namespace: "omacoach-shortcuts"
       WlrLayershell.layer: WlrLayer.Overlay
@@ -463,28 +487,178 @@ Item {
             font.pixelSize: Style.font.caption
           }
 
-          Text {
-            Layout.alignment: Qt.AlignHCenter
-            text: root.measurementEnabled
-              ? (root.totalAttemptCount() === 0
-                ? "Learning attempted shortcuts locally"
-                : root.observedBindingCount() + " bindings observed · " + root.totalAttemptCount() + " attempts")
-              : "Shortcut measurement paused"
-            color: Util.alpha(Color.popups.text, 0.48)
-            font.family: Style.font.family
-            font.pixelSize: Style.font.caption
+          Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 1
+            color: Util.alpha(Color.popups.border, 0.5)
           }
 
+          RowLayout {
+            Layout.fillWidth: true
+            spacing: Style.space(18)
 
-          Text {
-            readonly property var topApp: root.searchedAppsSummary().length > 0
-              ? root.searchedAppsSummary()[0] : null
-            visible: topApp !== null
-            Layout.alignment: Qt.AlignHCenter
-            text: topApp ? ("Most selected after search · " + topApp.name + " ×" + topApp.count) : ""
-            color: Util.alpha(Color.accent, 0.72)
-            font.family: Style.font.family
-            font.pixelSize: Style.font.caption
+            ColumnLayout {
+              id: appSearchPane
+              readonly property var apps: root.searchedAppsSummary().slice(0, 3)
+              Layout.fillWidth: true
+              Layout.alignment: Qt.AlignTop
+              spacing: Style.space(6)
+
+              Text {
+                text: "App search"
+                color: Color.popups.text
+                font.family: Style.font.family
+                font.pixelSize: Style.font.bodySmall
+                font.bold: true
+              }
+
+              Text {
+                visible: appSearchPane.apps.length === 0
+                text: "No apps selected after search yet"
+                color: Util.alpha(Color.popups.text, 0.5)
+                font.family: Style.font.family
+                font.pixelSize: Style.font.caption
+              }
+
+              Repeater {
+                model: appSearchPane.apps
+                RowLayout {
+                  required property var modelData
+                  Layout.fillWidth: true
+
+                  Text {
+                    Layout.fillWidth: true
+                    text: String(parent.modelData.name || parent.modelData.desktopId || "")
+                    color: Color.popups.text
+                    font.family: Style.font.family
+                    font.pixelSize: Style.font.caption
+                    elide: Text.ElideRight
+                  }
+
+                  Text {
+                    text: "×" + Number(parent.modelData.count || 0)
+                    color: Util.alpha(Color.accent, 0.82)
+                    font.family: Style.font.family
+                    font.pixelSize: Style.font.caption
+                    font.bold: true
+                  }
+                }
+              }
+            }
+
+            Rectangle {
+              Layout.preferredWidth: 1
+              Layout.fillHeight: true
+              color: Util.alpha(Color.popups.border, 0.5)
+            }
+
+            ColumnLayout {
+              id: measurementPane
+              Layout.fillWidth: true
+              Layout.alignment: Qt.AlignTop
+              spacing: Style.space(5)
+
+              HoverHandler {
+                onHoveredChanged: root.setControlsHovered(hovered)
+              }
+
+              Text {
+                text: "Measurement"
+                color: Color.popups.text
+                font.family: Style.font.family
+                font.pixelSize: Style.font.bodySmall
+                font.bold: true
+              }
+
+              Text {
+                text: root.observedBindingCount() + " bindings observed · " + root.totalAttemptCount() + " attempts"
+                color: Util.alpha(Color.popups.text, 0.62)
+                font.family: Style.font.family
+                font.pixelSize: Style.font.caption
+              }
+
+              Text {
+                text: root.searchedAppsSummary().length + " searched apps · " + root.totalAppSelectionCount() + " selections"
+                color: Util.alpha(Color.popups.text, 0.62)
+                font.family: Style.font.family
+                font.pixelSize: Style.font.caption
+              }
+
+              Text {
+                visible: !root.hidePending
+                text: "Release SUPER to interact"
+                color: Util.alpha(Color.accent, 0.78)
+                font.family: Style.font.family
+                font.pixelSize: Style.font.caption
+                font.bold: true
+              }
+
+              RowLayout {
+                Layout.fillWidth: true
+                Layout.preferredHeight: Style.space(28)
+                spacing: Style.space(10)
+
+                Text {
+                  Layout.fillWidth: true
+                  text: "Collect stats"
+                  color: root.hidePending ? Color.popups.text : Util.alpha(Color.popups.text, 0.45)
+                  font.family: Style.font.family
+                  font.pixelSize: Style.font.bodySmall
+                }
+
+                ToggleSwitch {
+                  checked: root.measurementEnabled
+                  interactive: root.hidePending
+                  foreground: Color.popups.text
+                  accent: Color.accent
+                  trackHeight: Style.space(18)
+                  onToggled: root.setMeasurementEnabled(!root.measurementEnabled)
+                }
+              }
+
+              Rectangle {
+                id: deleteStatsControl
+                property bool hovered: false
+                Layout.fillWidth: true
+                Layout.preferredHeight: Style.space(28)
+                radius: Math.min(Style.cornerRadius, Style.space(5))
+                color: hovered ? Util.alpha(Color.urgent, 0.13) : "transparent"
+
+                RowLayout {
+                  anchors.left: parent.left
+                  anchors.verticalCenter: parent.verticalCenter
+                  anchors.leftMargin: Style.space(6)
+                  spacing: Style.space(8)
+
+                  Text {
+                    text: "\uf1f8"
+                    color: !root.hidePending
+                      ? Util.alpha(Color.popups.text, 0.45)
+                      : (deleteStatsControl.hovered ? Color.urgent : Color.popups.text)
+                    font.family: Style.font.family
+                    font.pixelSize: Style.font.bodySmall
+                  }
+
+                  Text {
+                    text: "Delete collected stats"
+                    color: !root.hidePending
+                      ? Util.alpha(Color.popups.text, 0.45)
+                      : (deleteStatsControl.hovered ? Color.urgent : Color.popups.text)
+                    font.family: Style.font.family
+                    font.pixelSize: Style.font.bodySmall
+                  }
+                }
+
+                MouseArea {
+                  anchors.fill: parent
+                  enabled: root.hidePending
+                  hoverEnabled: true
+                  cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+                  onContainsMouseChanged: deleteStatsControl.hovered = containsMouse
+                  onClicked: root.resetStats()
+                }
+              }
+            }
           }
         }
       }
