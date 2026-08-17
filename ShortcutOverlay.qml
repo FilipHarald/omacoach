@@ -30,6 +30,7 @@ Item {
   property bool measurementEnabled: true
   property string sortOrder: "none"
   property string fillOrder: "columns"
+  property var triggerModifiers: ({ SUPER: true, SHIFT: true, CTRL: true, ALT: true })
   property double visibilitySequence: 0
   property bool pinned: false
   readonly property int revealDelayMs: 180
@@ -110,6 +111,14 @@ Item {
     sortOrder = parsed && ["alphabetical", "measurements"].indexOf(parsed.sortOrder) !== -1
       ? parsed.sortOrder : "none"
     fillOrder = parsed && parsed.fillOrder === "rows" ? "rows" : "columns"
+    var parsedTriggers = parsed && parsed.triggerModifiers && typeof parsed.triggerModifiers === "object"
+      ? parsed.triggerModifiers : ({})
+    triggerModifiers = {
+      SUPER: parsedTriggers.SUPER !== false,
+      SHIFT: parsedTriggers.SHIFT !== false,
+      CTRL: parsedTriggers.CTRL !== false,
+      ALT: parsedTriggers.ALT !== false
+    }
     attemptStats = parsed && parsed.version === 1 && parsed.bindings && typeof parsed.bindings === "object"
       ? parsed.bindings : ({})
     appSearchStats = parsed && parsed.version === 1 && parsed.appSearches && typeof parsed.appSearches === "object"
@@ -128,6 +137,7 @@ Item {
       enabled: measurementEnabled,
       sortOrder: sortOrder,
       fillOrder: fillOrder,
+      triggerModifiers: triggerModifiers,
       bindings: attemptStats,
       appSearches: appSearchStats,
       coachDecisions: coachDecisions
@@ -152,6 +162,19 @@ Item {
   function setFillOrder(order) {
     fillOrder = order === "rows" ? "rows" : "columns"
     scheduleStatsSave()
+  }
+
+  function setTriggerModifier(modifier, enabled) {
+    var key = String(modifier || "").toUpperCase()
+    if (["SUPER", "SHIFT", "CTRL", "ALT"].indexOf(key) === -1) return
+    var next = Object.assign({}, triggerModifiers)
+    next[key] = enabled === true
+    triggerModifiers = next
+    scheduleStatsSave()
+  }
+
+  function triggerEnabled(modifiers) {
+    return ShortcutModel.shouldTrigger(modifiers, triggerModifiers)
   }
 
   function resetStats() {
@@ -317,6 +340,11 @@ Item {
     if (pinned) return
     targetMonitor = String(monitor || "")
     updateModel(modifiers)
+    if (!triggerEnabled(modifiers)) {
+      revealTimer.stop()
+      opened = false
+      return
+    }
     opened = false
     revealTimer.restart()
   }
@@ -325,6 +353,11 @@ Item {
     if (pinned) return
     if (monitor) targetMonitor = String(monitor)
     updateModel(modifiers)
+    if (!triggerEnabled(modifiers)) {
+      hideHints()
+    } else if (!opened && !revealTimer.running) {
+      revealTimer.restart()
+    }
   }
 
   function hideHints() {
@@ -672,23 +705,6 @@ Item {
             font.pixelSize: Style.font.caption
           }
 
-          RowLayout {
-            visible: root.pinned
-            Layout.alignment: Qt.AlignHCenter
-            spacing: Style.space(8)
-
-            Repeater {
-              model: root.modifierStates
-              ModifierChip {
-                required property var modelData
-                label: String(modelData.modifier)
-                count: !modelData.pressed && Number(modelData.count) > 0 ? Number(modelData.count) : -1
-                branch: !modelData.pressed && Number(modelData.count) > 0
-                muted: !modelData.pressed && Number(modelData.count) === 0
-              }
-            }
-          }
-
           Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: 1
@@ -728,8 +744,9 @@ Item {
               spacing: Style.space(5)
 
               Text {
-                Layout.alignment: Qt.AlignHCenter
+                Layout.fillWidth: true
                 text: "Coach"
+                horizontalAlignment: Text.AlignHCenter
                 color: Util.alpha(Color.popups.text, 0.62)
                 font.family: Style.font.family
                 font.pixelSize: Style.font.bodySmall
@@ -737,9 +754,10 @@ Item {
               }
 
               Text {
-                Layout.alignment: Qt.AlignHCenter
+                Layout.fillWidth: true
                 visible: root.searchedAppsSummary().length > 0
                 text: "Available insights"
+                horizontalAlignment: Text.AlignHCenter
                 color: Util.alpha(Color.popups.text, 0.5)
                 font.family: Style.font.family
                 font.pixelSize: Style.font.caption
@@ -759,8 +777,9 @@ Item {
               spacing: Style.space(5)
 
               Text {
-                Layout.alignment: Qt.AlignHCenter
+                Layout.fillWidth: true
                 text: "Data"
+                horizontalAlignment: Text.AlignHCenter
                 color: Util.alpha(Color.popups.text, 0.62)
                 font.family: Style.font.family
                 font.pixelSize: Style.font.bodySmall
@@ -768,16 +787,18 @@ Item {
               }
 
               Text {
-                Layout.alignment: Qt.AlignHCenter
+                Layout.fillWidth: true
                 text: root.observedBindingCount() + " bindings observed · " + root.totalAttemptCount() + " attempts"
+                horizontalAlignment: Text.AlignHCenter
                 color: Util.alpha(Color.popups.text, 0.5)
                 font.family: Style.font.family
                 font.pixelSize: Style.font.caption
               }
 
               Text {
-                Layout.alignment: Qt.AlignHCenter
+                Layout.fillWidth: true
                 text: root.searchedAppsSummary(true).length + " searched apps · " + root.totalAppSelectionCount() + " selections"
+                horizontalAlignment: Text.AlignHCenter
                 color: Util.alpha(Color.popups.text, 0.5)
                 font.family: Style.font.family
                 font.pixelSize: Style.font.caption
@@ -797,8 +818,9 @@ Item {
               spacing: Style.space(5)
 
               Text {
-                Layout.alignment: Qt.AlignHCenter
+                Layout.fillWidth: true
                 text: "Settings"
+                horizontalAlignment: Text.AlignHCenter
                 color: Util.alpha(Color.popups.text, 0.62)
                 font.family: Style.font.family
                 font.pixelSize: Style.font.bodySmall
@@ -806,9 +828,10 @@ Item {
               }
 
               Text {
-                Layout.alignment: Qt.AlignHCenter
+                Layout.fillWidth: true
                 visible: root.measurementEnabled
                 text: "Data collecting is enabled"
+                horizontalAlignment: Text.AlignHCenter
                 color: Util.alpha(Color.popups.text, 0.5)
                 font.family: Style.font.family
                 font.pixelSize: Style.font.caption
@@ -1060,6 +1083,41 @@ Item {
                 font.family: Style.font.family
                 font.pixelSize: Style.font.bodySmall
                 font.bold: true
+              }
+
+              Text {
+                text: "Trigger popover"
+                color: Util.alpha(Color.popups.text, 0.62)
+                font.family: Style.font.family
+                font.pixelSize: Style.font.bodySmall
+              }
+
+              Repeater {
+                model: ["SUPER", "SHIFT", "CTRL", "ALT"]
+
+                RowLayout {
+                  required property string modelData
+                  Layout.fillWidth: true
+                  Layout.preferredHeight: Style.space(26)
+                  spacing: Style.space(10)
+
+                  Text {
+                    Layout.fillWidth: true
+                    text: parent.modelData
+                    color: Util.alpha(Color.popups.text, 0.62)
+                    font.family: Style.font.family
+                    font.pixelSize: Style.font.caption
+                  }
+
+                  ToggleSwitch {
+                    checked: root.triggerModifiers[parent.modelData] !== false
+                    interactive: root.pinned
+                    foreground: Util.alpha(Color.popups.text, 0.62)
+                    accent: Color.accent
+                    trackHeight: Style.space(16)
+                    onToggled: root.setTriggerModifier(parent.modelData, !checked)
+                  }
+                }
               }
 
               RowLayout {

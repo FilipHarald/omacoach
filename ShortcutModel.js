@@ -39,6 +39,15 @@ function modifierKey(value) {
   return normalizeModifiers(value).join(" ")
 }
 
+function shouldTrigger(modifiers, enabled) {
+  var current = normalizeModifiers(modifiers)
+  var settings = enabled || {}
+  for (var i = 0; i < current.length; i++) {
+    if (settings[current[i]] !== false) return true
+  }
+  return false
+}
+
 function parseLine(line) {
   var match = String(line || "").match(/^\s*(.*?)\s*(?:→|->)\s*(.*?)\s*$/)
   if (!match) return null
@@ -196,6 +205,7 @@ if (typeof module !== "undefined") {
   module.exports = {
     normalizeModifiers: normalizeModifiers,
     modifierKey: modifierKey,
+    shouldTrigger: shouldTrigger,
     parseLine: parseLine,
     parseBindings: parseBindings,
     groupBindings: groupBindings,

@@ -9,6 +9,11 @@ Rectangle {
   property int count: -1
   property bool branch: false
   property bool muted: false
+  readonly property string countLabel: {
+    if (count < 0) return "    "
+    var value = count >= 100 ? "99+" : String(count)
+    return ("    " + value).slice(-4)
+  }
 
   implicitWidth: chipRow.implicitWidth + Style.space(16)
   implicitHeight: Style.space(26)
@@ -37,8 +42,7 @@ Rectangle {
     }
 
     Text {
-      visible: root.count >= 0
-      text: String(root.count)
+      text: root.countLabel
       color: Util.alpha(Color.popups.text, 0.5)
       font.family: Style.font.family
       font.pixelSize: Style.font.caption

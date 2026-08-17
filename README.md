@@ -21,6 +21,8 @@ key.
 - Labels those counts as attempted shortcuts, not confirmed invocations.
 - Supports source-order, alphabetical, or measurement-count sorting with
   row-first or column-first grid flow; source order and column-first are defaults.
+- Lets users independently disable passive triggers for `SUPER`, `SHIFT`,
+  `CTRL`, or `ALT`; all four are enabled by default.
 
 Mouse, wheel, `XF86`, `code:`, submap, and native multi-key chord bindings are
 not promised by this prototype. Hyprland does not expose a post-dispatch event,

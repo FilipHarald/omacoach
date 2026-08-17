@@ -14,6 +14,9 @@ const output = [
 const bindings = model.parseBindings(output)
 assert.equal(bindings.length, 5)
 assert.deepEqual(model.normalizeModifiers("alt super shift"), ["SUPER", "SHIFT", "ALT"])
+assert.equal(model.shouldTrigger("SHIFT", { SUPER: true, SHIFT: false, CTRL: true, ALT: true }), false)
+assert.equal(model.shouldTrigger("SHIFT CTRL", { SUPER: true, SHIFT: false, CTRL: true, ALT: true }), true)
+assert.equal(model.shouldTrigger("ALT", {}), true)
 
 const groups = model.groupBindings(bindings)
 assert.deepEqual(model.bindingsFor(groups, "SUPER").map(binding => binding.key), ["SPACE"])
