@@ -851,7 +851,6 @@ Item {
               Layout.fillWidth: true
               Layout.preferredWidth: 1
               Layout.fillHeight: true
-              Layout.alignment: Qt.AlignTop
               spacing: Style.space(6)
 
               Text {
@@ -992,7 +991,6 @@ Item {
               Layout.fillWidth: true
               Layout.preferredWidth: 1
               Layout.fillHeight: true
-              Layout.alignment: Qt.AlignTop
               spacing: Style.space(5)
 
               Text {
@@ -1024,15 +1022,14 @@ Item {
                 Layout.fillHeight: true
               }
 
-              RowLayout {
+              ColumnLayout {
                 Layout.fillWidth: true
-                Layout.preferredHeight: Style.space(28)
+                Layout.preferredHeight: Style.space(56)
                 spacing: 0
 
                 Rectangle {
                   Layout.fillWidth: true
-                  Layout.preferredWidth: 1
-                  Layout.fillHeight: true
+                  Layout.preferredHeight: Style.space(28)
                   radius: Math.min(Style.cornerRadius, Style.space(5))
                   color: "transparent"
 
@@ -1062,8 +1059,7 @@ Item {
                   id: deleteStatsControl
                   property bool hovered: false
                   Layout.fillWidth: true
-                  Layout.preferredWidth: 1
-                  Layout.fillHeight: true
+                  Layout.preferredHeight: Style.space(28)
                   radius: Math.min(Style.cornerRadius, Style.space(5))
                   color: hovered ? Util.alpha(Color.urgent, 0.13) : "transparent"
 
@@ -1109,7 +1105,6 @@ Item {
               Layout.fillWidth: true
               Layout.preferredWidth: 1
               Layout.fillHeight: true
-              Layout.alignment: Qt.AlignTop
               spacing: Style.space(8)
 
               Text {
