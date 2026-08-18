@@ -337,7 +337,10 @@ Item {
   }
 
   function armHints(modifiers, monitor) {
-    if (pinned) return
+    if (pinned) {
+      updateModel(modifiers)
+      return
+    }
     targetMonitor = String(monitor || "")
     updateModel(modifiers)
     if (!triggerEnabled(modifiers)) {
@@ -350,7 +353,10 @@ Item {
   }
 
   function updateHints(modifiers, monitor) {
-    if (pinned) return
+    if (pinned) {
+      updateModel(modifiers)
+      return
+    }
     if (monitor) targetMonitor = String(monitor)
     updateModel(modifiers)
     if (!triggerEnabled(modifiers)) {
@@ -362,7 +368,10 @@ Item {
 
   function hideHints() {
     revealTimer.stop()
-    if (pinned) return
+    if (pinned) {
+      updateModel("SUPER")
+      return
+    }
     opened = false
   }
 
@@ -591,7 +600,7 @@ Item {
         height: content.implicitHeight + Style.spacing.panelPadding * 2 + borderTop + borderBottom
         anchors.horizontalCenter: parent.horizontalCenter
         y: root.pinned
-          ? panel.height - Style.space(130) - height
+          ? panel.height * 0.2
           : Math.max(Style.space(12), Math.min(panel.height * 0.5, panel.height - (root.opened ? Style.space(26) : Style.space(12)) - height))
         color: Color.popups.background
         borderSpec: Border.surfaceSpec("popups", "border", Color.popups.border, Math.max(1, Style.space(2)))
@@ -607,23 +616,6 @@ Item {
           anchors.fill: parent
           anchors.margins: Style.spacing.panelPadding
           spacing: Style.space(12)
-
-          RowLayout {
-            visible: !root.pinned
-            Layout.alignment: Qt.AlignHCenter
-            spacing: Style.space(8)
-
-            Repeater {
-              model: root.modifierStates
-              ModifierChip {
-                required property var modelData
-                label: String(modelData.modifier)
-                count: !modelData.pressed && Number(modelData.count) > 0 ? Number(modelData.count) : -1
-                branch: !modelData.pressed && Number(modelData.count) > 0
-                muted: !modelData.pressed && Number(modelData.count) === 0
-              }
-            }
-          }
 
           Rectangle {
             id: topCloseControl
@@ -659,6 +651,22 @@ Item {
               hoverEnabled: true
               cursorShape: Qt.PointingHandCursor
               onClicked: root.togglePinned("")
+            }
+          }
+
+          RowLayout {
+            Layout.alignment: Qt.AlignHCenter
+            spacing: Style.space(8)
+
+            Repeater {
+              model: root.modifierStates
+              ModifierChip {
+                required property var modelData
+                label: String(modelData.modifier)
+                count: !modelData.pressed && Number(modelData.count) > 0 ? Number(modelData.count) : -1
+                branch: !modelData.pressed && Number(modelData.count) > 0
+                muted: !modelData.pressed && Number(modelData.count) === 0
+              }
             }
           }
 

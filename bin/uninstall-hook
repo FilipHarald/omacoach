@@ -7,25 +7,71 @@ END_MARKER="-- omacoach:end"
 BIND_START_MARKER="-- omacoach-binding:start"
 BIND_END_MARKER="-- omacoach-binding:end"
 BINDINGS_FILE="$HOME/.config/hypr/bindings.lua"
+STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/omacoach"
+changed=0
+temp_file=""
+backup=""
 
-[[ -f "$BINDINGS_FILE" ]] || exit 0
+fail() {
+  printf 'uninstall-hook: %s\n' "$*" >&2
+  exit 1
+}
+
+cleanup() {
+  status=$?
+  [[ -z "$temp_file" ]] || rm -f -- "$temp_file"
+  if ((status != 0 && changed == 1)); then
+    cp -p -- "$backup" "$BINDINGS_FILE"
+    hyprctl reload >/dev/null 2>&1 || true
+    printf 'uninstall-hook: restored %s after uninstallation failure\n' "$BINDINGS_FILE" >&2
+  fi
+  exit "$status"
+}
+
+trap cleanup EXIT
+
+# Stop the loaded service before deleting state so it cannot write the file back.
+if command -v omarchy >/dev/null 2>&1; then
+  omarchy plugin disable omacoach >/dev/null 2>&1 || true
+fi
+
+if [[ ! -f "$BINDINGS_FILE" ]]; then
+  rm -rf -- "$STATE_DIR"
+  trap - EXIT
+  printf 'Removed Omacoach data; no observer integration was installed.\n'
+  exit 0
+fi
 
 start_count=$(grep -Fxc -- "$START_MARKER" "$BINDINGS_FILE" || true)
 end_count=$(grep -Fxc -- "$END_MARKER" "$BINDINGS_FILE" || true)
 bind_start_count=$(grep -Fxc -- "$BIND_START_MARKER" "$BINDINGS_FILE" || true)
 bind_end_count=$(grep -Fxc -- "$BIND_END_MARKER" "$BINDINGS_FILE" || true)
 if ((start_count == 0 && end_count == 0 && bind_start_count == 0 && bind_end_count == 0)); then
-  printf 'Omacoach integration is not installed.\n'
+  rm -rf -- "$STATE_DIR"
+  trap - EXIT
+  printf 'Removed Omacoach data; no observer integration was installed.\n'
   exit 0
 fi
 if ((start_count != end_count || start_count > 1 || bind_start_count != bind_end_count || bind_start_count > 1)); then
-  printf 'uninstall-hook: marker block is incomplete; no configuration was changed\n' >&2
-  exit 1
+  fail "marker block is incomplete; no configuration or data was changed"
+fi
+if ((start_count == 1)); then
+  start_line=$(grep -Fn -- "$START_MARKER" "$BINDINGS_FILE" | cut -d: -f1)
+  end_line=$(grep -Fn -- "$END_MARKER" "$BINDINGS_FILE" | cut -d: -f1)
+  ((start_line < end_line)) || fail "observer marker block is malformed; no configuration or data was changed"
+fi
+if ((bind_start_count == 1)); then
+  bind_start_line=$(grep -Fn -- "$BIND_START_MARKER" "$BINDINGS_FILE" | cut -d: -f1)
+  bind_end_line=$(grep -Fn -- "$BIND_END_MARKER" "$BINDINGS_FILE" | cut -d: -f1)
+  ((bind_start_line < bind_end_line)) || fail "binding marker block is malformed; no configuration or data was changed"
+fi
+if ((start_count == 1 && bind_start_count == 1)); then
+  ((end_line < bind_start_line || bind_end_line < start_line)) ||
+    fail "marker blocks overlap; no configuration or data was changed"
 fi
 
 backup="$BINDINGS_FILE.omacoach-uninstall.bak.$(date -u +%Y%m%d%H%M%S)"
 temp_file=$(mktemp "$BINDINGS_FILE.omacoach.XXXXXX")
-trap 'rm -f -- "$temp_file"' EXIT
 cp -p -- "$BINDINGS_FILE" "$backup"
 
 sed -e "/^${START_MARKER}$/,/^${END_MARKER}$/d" \
@@ -34,15 +80,13 @@ sed -e "/^${START_MARKER}$/,/^${END_MARKER}$/d" \
 chmod --reference="$BINDINGS_FILE" "$temp_file"
 luac -p "$temp_file"
 mv -- "$temp_file" "$BINDINGS_FILE"
-trap - EXIT
+changed=1
 
-hyprctl reload >/dev/null
+hyprctl reload >/dev/null || fail "Hyprland reload failed; no configuration or data was changed"
 config_errors=$(hyprctl configerrors 2>/dev/null || true)
-if [[ -n "$config_errors" ]]; then
-  cp -p -- "$backup" "$BINDINGS_FILE"
-  hyprctl reload >/dev/null 2>&1 || true
-  printf 'uninstall-hook: restored configuration after Hyprland errors: %s\n' "$config_errors" >&2
-  exit 1
-fi
+[[ -z "$config_errors" ]] || fail "Hyprland reported configuration errors: $config_errors; no configuration or data was changed"
 
-printf 'Removed Omacoach observer and panel binding. Backup: %s\n' "$backup"
+changed=0
+rm -rf -- "$STATE_DIR"
+trap - EXIT
+printf 'Removed Omacoach observer, panel binding, and data. Backup: %s\n' "$backup"

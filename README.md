@@ -88,11 +88,13 @@ The observer installer makes a timestamped backup of
 adds a separate marked `SUPER+CTRL+K` panel binding, reloads Hyprland, and
 rolls back if validation fails.
 
-Remove the observer before removing the plugin:
+Uninstalling disables the plugin when possible, removes the observer and panel
+binding transactionally, and permanently deletes
+`${XDG_STATE_HOME:-~/.local/state}/omacoach`. Configuration is restored from the
+timestamped backup if Hyprland rejects the change:
 
 ```bash
 ./bin/uninstall-hook
-omarchy plugin disable omacoach
 ```
 
 Run the checks with `./scripts/check`. Preview the UI without holding a key:

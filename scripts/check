@@ -9,6 +9,7 @@ test -x scripts/show-app-keybindings
 node tests/model.js
 node tests/app-binding-matcher.js
 lua tests/observer.lua
+bash tests/lifecycle.sh
 keymap_output=$(scripts/keymap)
 grep -q $'65\tSPACE' <<<"$keymap_output"
 luac -p hypr/observer.lua hypr/ObserverState.lua

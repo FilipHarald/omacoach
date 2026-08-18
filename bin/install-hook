@@ -45,6 +45,20 @@ fi
 if ((bind_start_count != bind_end_count || bind_start_count > 1)); then
   fail "found an incomplete Omacoach binding marker block; no configuration was changed"
 fi
+if ((start_count == 1)); then
+  start_line=$(grep -Fn -- "$START_MARKER" "$BINDINGS_FILE" | cut -d: -f1)
+  end_line=$(grep -Fn -- "$END_MARKER" "$BINDINGS_FILE" | cut -d: -f1)
+  ((start_line < end_line)) || fail "found a malformed Omacoach marker block; no configuration was changed"
+fi
+if ((bind_start_count == 1)); then
+  bind_start_line=$(grep -Fn -- "$BIND_START_MARKER" "$BINDINGS_FILE" | cut -d: -f1)
+  bind_end_line=$(grep -Fn -- "$BIND_END_MARKER" "$BINDINGS_FILE" | cut -d: -f1)
+  ((bind_start_line < bind_end_line)) || fail "found a malformed Omacoach binding marker block; no configuration was changed"
+fi
+if ((start_count == 1 && bind_start_count == 1)); then
+  ((end_line < bind_start_line || bind_end_line < start_line)) ||
+    fail "found overlapping Omacoach marker blocks; no configuration was changed"
+fi
 if ((bind_start_count == 1)) && grep -Fq 'o.bind("SUPER + CTRL + K", "Toggle Omacoach"' "$BINDINGS_FILE"; then
   binding_is_current=1
 fi
