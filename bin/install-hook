@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-PLUGIN_ID="omacoach"
+PLUGIN_ID="io.github.filipharald.omacoach"
 START_MARKER="-- omacoach:start"
 END_MARKER="-- omacoach:end"
 BIND_START_MARKER="-- omacoach-binding:start"
@@ -39,6 +39,7 @@ end_count=$(grep -Fxc -- "$END_MARKER" "$BINDINGS_FILE" || true)
 bind_start_count=$(grep -Fxc -- "$BIND_START_MARKER" "$BINDINGS_FILE" || true)
 bind_end_count=$(grep -Fxc -- "$BIND_END_MARKER" "$BINDINGS_FILE" || true)
 binding_is_current=0
+observer_is_current=0
 if ((start_count != end_count || start_count > 1)); then
   fail "found an incomplete Omacoach marker block; no configuration was changed"
 fi
@@ -59,14 +60,19 @@ if ((start_count == 1 && bind_start_count == 1)); then
   ((end_line < bind_start_line || bind_end_line < start_line)) ||
     fail "found overlapping Omacoach marker blocks; no configuration was changed"
 fi
-if ((bind_start_count == 1)) && grep -Fq 'o.bind("SUPER + CTRL + K", "Toggle Omacoach"' "$BINDINGS_FILE"; then
+if ((start_count == 1)) && grep -Fq '/plugins/io.github.filipharald.omacoach/hypr/observer.lua' "$BINDINGS_FILE"; then
+  observer_is_current=1
+fi
+if ((bind_start_count == 1)) \
+    && grep -Fq 'o.bind("SUPER + CTRL + K", "Toggle Omacoach"' "$BINDINGS_FILE" \
+    && grep -Fq '/plugins/io.github.filipharald.omacoach/bin/toggle-panel' "$BINDINGS_FILE"; then
   binding_is_current=1
 fi
-if ((start_count == 1 && bind_start_count == 1 && binding_is_current == 1)); then
+if ((start_count == 1 && observer_is_current == 1 && bind_start_count == 1 && binding_is_current == 1)); then
   printf 'Omacoach observer and panel binding are already installed.\n'
   exit 0
 fi
-if ((bind_start_count == 0 || binding_is_current == 0)); then
+if ((bind_start_count == 0)); then
   existing_bindings=$(omarchy-menu-keybindings --print)
   if grep -Fq 'SUPER CTRL + K' <<<"$existing_bindings"; then
     fail "SUPER CTRL + K is already bound; no configuration was changed"
@@ -94,6 +100,12 @@ trap cleanup EXIT
 cp -p -- "$BINDINGS_FILE" "$backup"
 cp -p -- "$BINDINGS_FILE" "$temp_file"
 
+if ((start_count == 1 && observer_is_current == 0)); then
+  sed "/^${START_MARKER}$/,/^${END_MARKER}$/d" "$temp_file" >"$rewrite_file"
+  mv -- "$rewrite_file" "$temp_file"
+  start_count=0
+fi
+
 if ((bind_start_count == 1 && binding_is_current == 0)); then
   sed "/^${BIND_START_MARKER}$/,/^${BIND_END_MARKER}$/d" "$temp_file" >"$rewrite_file"
   mv -- "$rewrite_file" "$temp_file"
@@ -106,7 +118,7 @@ if ((start_count == 0)); then
 -- omacoach:start
 do
   local home = os.getenv("HOME")
-  local path = home and (home .. "/.config/omarchy/plugins/omacoach/hypr/observer.lua")
+  local path = home and (home .. "/.config/omarchy/plugins/io.github.filipharald.omacoach/hypr/observer.lua")
   if path then
     local file = io.open(path, "r")
     if file then
@@ -126,7 +138,7 @@ if ((bind_start_count == 0)); then
 -- omacoach-binding:start
 do
   local home = os.getenv("HOME")
-  local command = home and (home .. "/.config/omarchy/plugins/omacoach/bin/toggle-panel")
+  local command = home and (home .. "/.config/omarchy/plugins/io.github.filipharald.omacoach/bin/toggle-panel")
   if command then o.bind("SUPER + CTRL + K", "Toggle Omacoach", command) end
 end
 -- omacoach-binding:end

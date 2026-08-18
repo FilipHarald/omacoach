@@ -32,7 +32,7 @@ trap cleanup EXIT
 
 # Stop the loaded service before deleting state so it cannot write the file back.
 if command -v omarchy >/dev/null 2>&1; then
-  omarchy plugin disable omacoach >/dev/null 2>&1 || true
+  omarchy plugin disable io.github.filipharald.omacoach >/dev/null 2>&1 || true
 fi
 
 if [[ ! -f "$BINDINGS_FILE" ]]; then

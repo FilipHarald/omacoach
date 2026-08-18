@@ -135,7 +135,7 @@ Install and enable the public plugin, then install its Hyprland observer and
 
 ```bash
 omarchy plugin add https://github.com/FilipHarald/omacoach.git --enable
-~/.config/omarchy/plugins/omacoach/bin/install-hook
+~/.config/omarchy/plugins/io.github.filipharald.omacoach/bin/install-hook
 ```
 
 The hook validates the plugin and Hyprland Lua APIs, makes a timestamped backup
@@ -147,8 +147,8 @@ reloads Hyprland, and restores the backup if validation fails.
 Run the uninstall hook before removing the plugin checkout:
 
 ```bash
-~/.config/omarchy/plugins/omacoach/bin/uninstall-hook
-omarchy plugin remove omacoach
+~/.config/omarchy/plugins/io.github.filipharald.omacoach/bin/uninstall-hook
+omarchy plugin remove io.github.filipharald.omacoach
 ```
 
 Uninstalling disables the plugin when possible, transactionally removes the
@@ -159,9 +159,9 @@ timestamped backup if Hyprland rejects the change.
 ## Development install
 
 ```bash
-ln -s "$PWD" ~/.config/omarchy/plugins/omacoach
+ln -s "$PWD" ~/.config/omarchy/plugins/io.github.filipharald.omacoach
 omarchy-shell shell rescanPlugins
-omarchy plugin enable omacoach
+omarchy plugin enable io.github.filipharald.omacoach
 ./bin/install-hook
 ```
 

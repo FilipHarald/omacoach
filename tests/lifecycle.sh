@@ -32,6 +32,9 @@ reload)
 configerrors)
   printf '%s' "${MOCK_CONFIG_ERRORS:-}"
   ;;
+repl)
+  printf 'function\tfunction\tfunction\tfunction\n'
+  ;;
 esac
 EOF
   chmod +x "$MOCK_BIN/omarchy" "$MOCK_BIN/hyprctl"
@@ -94,5 +97,42 @@ printf 'local retained = true\n' >"$HOME/.config/hypr/bindings.lua"
 grep -Fq 'local retained = true' "$HOME/.config/hypr/bindings.lua"
 [[ ! -e "$XDG_STATE_HOME/omacoach" ]]
 [[ ! -e "$MOCK_RELOAD_COUNT" ]]
+
+setup_case legacy-id-migration
+mkdir -p "$HOME/.config/omarchy/plugins"
+ln -s "$ROOT" "$HOME/.config/omarchy/plugins/io.github.filipharald.omacoach"
+cat >"$MOCK_BIN/omarchy-shell" <<'EOF'
+#!/bin/bash
+exit 0
+EOF
+cat >"$MOCK_BIN/omarchy-plugin-validate" <<'EOF'
+#!/bin/bash
+exit 0
+EOF
+cat >"$MOCK_BIN/omarchy-menu-keybindings" <<'EOF'
+#!/bin/bash
+printf 'SUPER CTRL + K -> Toggle Omacoach\n'
+EOF
+chmod +x "$MOCK_BIN/omarchy-shell" "$MOCK_BIN/omarchy-plugin-validate" "$MOCK_BIN/omarchy-menu-keybindings"
+cat >"$HOME/.config/hypr/bindings.lua" <<'EOF'
+local retained = true
+-- omacoach:start
+do
+  local path = os.getenv("HOME") .. "/.config/omarchy/plugins/omacoach/hypr/observer.lua"
+  dofile(path)
+end
+-- omacoach:end
+-- omacoach-binding:start
+do
+  local command = os.getenv("HOME") .. "/.config/omarchy/plugins/omacoach/bin/toggle-panel"
+  o.bind("SUPER + CTRL + K", "Toggle Omacoach", command)
+end
+-- omacoach-binding:end
+EOF
+"$ROOT/bin/install-hook" >/dev/null
+grep -Fq '/plugins/io.github.filipharald.omacoach/hypr/observer.lua' "$HOME/.config/hypr/bindings.lua"
+grep -Fq '/plugins/io.github.filipharald.omacoach/bin/toggle-panel' "$HOME/.config/hypr/bindings.lua"
+! grep -Fq '/plugins/omacoach/' "$HOME/.config/hypr/bindings.lua"
+[[ $(<"$MOCK_RELOAD_COUNT") == 1 ]]
 
 printf 'lifecycle tests passed\n'
