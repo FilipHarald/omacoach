@@ -4,7 +4,9 @@
 > Shortcut discovery and attempted-shortcut measurement work with stock Omarchy,
 > but the Coach cannot observe app selections unless the active Omarchy menu has
 > the hook in `experiments/menu-search-event.patch` or a compatible future
-> upstream event. Omacoach cannot currently detect this support automatically.
+> upstream event. Follow [issue #17](https://github.com/FilipHarald/omacoach/issues/17)
+> for integration status. Omacoach cannot currently detect this support
+> automatically.
 
 Omacoach helps you discover Omarchy with the keyboard and coaches you to become
 better at using shortcuts. It is an experimental Omarchy Quattro plugin.
