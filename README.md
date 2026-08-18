@@ -110,11 +110,12 @@ Coach rows expose three actions:
 - **Show keybinding** opens the Omarchy keybinding selector narrowed to effective
   launcher bindings matched for that app.
 
-The current shell has no reliable capability probe for this menu integration.
-See [UPSTREAM.md](UPSTREAM.md) for the production event and capability contract.
-When detection becomes available, only searched-app coaching should be disabled
-on unsupported menus; shortcut hints and attempted-shortcut measurement are
-independent and should continue working.
+The native event and capability contract is tracked in
+[issue #17](https://github.com/FilipHarald/omacoach/issues/17) and proposed in
+[basecamp/omarchy#7372](https://github.com/basecamp/omarchy/pull/7372).
+Omacoach accepts the proposed semantic event but cannot detect support yet.
+Unsupported menus should disable only search-selection coaching; shortcut hints
+and attempted-shortcut measurement are independent and should continue working.
 
 ## Requirements
 
