@@ -25,6 +25,7 @@ Item {
   property var keycodeMap: ({})
   property var attemptStats: ({})
   property var appSearchStats: ({})
+  property var menuSearchStats: ({})
   property var coachDecisions: ({})
   property var appBindingMatches: ({})
   property bool statsLoaded: false
@@ -121,11 +122,14 @@ Item {
       CTRL: parsedTriggers.CTRL !== false,
       ALT: parsedTriggers.ALT !== false
     }
-    attemptStats = parsed && parsed.version === 1 && parsed.bindings && typeof parsed.bindings === "object"
+    var supportedVersion = parsed && (parsed.version === 1 || parsed.version === 2)
+    attemptStats = supportedVersion && parsed.bindings && typeof parsed.bindings === "object"
       ? parsed.bindings : ({})
-    appSearchStats = parsed && parsed.version === 1 && parsed.appSearches && typeof parsed.appSearches === "object"
+    appSearchStats = supportedVersion && parsed.appSearches && typeof parsed.appSearches === "object"
       ? parsed.appSearches : ({})
-    coachDecisions = parsed && parsed.version === 1 && parsed.coachDecisions && typeof parsed.coachDecisions === "object"
+    menuSearchStats = parsed && parsed.version === 2 && parsed.menuSearches && typeof parsed.menuSearches === "object"
+      ? parsed.menuSearches : ({})
+    coachDecisions = supportedVersion && parsed.coachDecisions && typeof parsed.coachDecisions === "object"
       ? parsed.coachDecisions : ({})
     statsLoaded = true
     updateModel(currentModifierKey)
@@ -135,13 +139,14 @@ Item {
   function saveStats() {
     if (!statsLoaded) return
     statsFile.setText(JSON.stringify({
-      version: 1,
+      version: 2,
       enabled: measurementEnabled,
       sortOrder: sortOrder,
       fillOrder: fillOrder,
       triggerModifiers: triggerModifiers,
       bindings: attemptStats,
       appSearches: appSearchStats,
+      menuSearches: menuSearchStats,
       coachDecisions: coachDecisions
     }, null, 2) + "\n")
   }
@@ -182,6 +187,7 @@ Item {
   function resetStats() {
     attemptStats = ({})
     appSearchStats = ({})
+    menuSearchStats = ({})
     coachDecisions = ({})
     appBindingMatches = ({})
     if (sortOrder === "measurements") updateModel(currentModifierKey)
@@ -193,6 +199,15 @@ Item {
     if (!id) return
     var next = Object.assign({}, coachDecisions)
     next[id] = { ignored: true }
+    coachDecisions = next
+    scheduleStatsSave()
+  }
+
+  function ignoreCoachInsight(insight) {
+    var key = insight ? String(insight.decisionKey || "").trim() : ""
+    if (!key) return
+    var next = Object.assign({}, coachDecisions)
+    next[key] = { ignored: true }
     coachDecisions = next
     scheduleStatsSave()
   }
@@ -300,6 +315,22 @@ Item {
     return count
   }
 
+  function totalMenuSelectionCount() {
+    var count = totalAppSelectionCount()
+    for (var itemId in menuSearchStats) {
+      if (menuSearchStats[itemId]) count += Number(menuSearchStats[itemId].count) || 0
+    }
+    return count
+  }
+
+  function menuSelectionIdentityCount() {
+    var count = searchedAppsSummary(true).length
+    for (var itemId in menuSearchStats) {
+      if (menuSearchStats[itemId] && Number(menuSearchStats[itemId].count) > 0) count++
+    }
+    return count
+  }
+
   function recordSearchedApp(desktopId, name) {
     if (!statsLoaded || !measurementEnabled) return false
     var id = String(desktopId || "").trim()
@@ -318,6 +349,30 @@ Item {
     return true
   }
 
+  function recordMenuSelection(event) {
+    if (!event || Number(event.schemaVersion) !== 1) return false
+    var kind = String(event.kind || "").trim()
+    var label = String(event.label || "").trim()
+    if (kind === "app") return recordSearchedApp(event.desktopId, label)
+    if (!statsLoaded || !measurementEnabled) return false
+    if (["action", "link", "menu"].indexOf(kind) === -1) return false
+    var itemId = String(event.itemId || "").trim()
+    var path = String(event.path || "").trim()
+    if (!itemId || !label || !path) return false
+
+    var next = Object.assign({}, menuSearchStats)
+    var previous = next[itemId]
+    next[itemId] = {
+      kind: kind,
+      label: label,
+      path: path,
+      count: (previous ? Number(previous.count) : 0) + 1
+    }
+    menuSearchStats = next
+    scheduleStatsSave()
+    return true
+  }
+
   function searchedAppsSummary(includeIgnored) {
     var apps = []
     for (var desktopId in appSearchStats) {
@@ -328,7 +383,9 @@ Item {
         desktopId: desktopId,
         name: String(entry.name || desktopId),
         count: Number(entry.count),
-        matches: appBindingMatches[desktopId] || []
+        matches: appBindingMatches[desktopId] || [],
+        kind: "app",
+        decisionKey: desktopId
       })
     }
     apps.sort(function(left, right) {
@@ -336,6 +393,29 @@ Item {
       return left.name.localeCompare(right.name)
     })
     return apps
+  }
+
+  function coachInsightsSummary(includeIgnored) {
+    var insights = searchedAppsSummary(includeIgnored)
+    for (var itemId in menuSearchStats) {
+      var entry = menuSearchStats[itemId]
+      var decisionKey = "menu:" + itemId
+      if (!entry || Number(entry.count) <= 0) continue
+      if (includeIgnored !== true && coachDecisions[decisionKey] && coachDecisions[decisionKey].ignored === true) continue
+      insights.push({
+        itemId: itemId,
+        name: String(entry.path || entry.label || itemId),
+        count: Number(entry.count),
+        matches: [],
+        kind: String(entry.kind || "action"),
+        decisionKey: decisionKey
+      })
+    }
+    insights.sort(function(left, right) {
+      if (left.count !== right.count) return right.count - left.count
+      return left.name.localeCompare(right.name)
+    })
+    return insights
   }
 
   function armHints(modifiers, monitor) {
@@ -537,6 +617,10 @@ Item {
       return JSON.stringify(root.searchedAppsSummary())
     }
 
+    function menuSelections(): string {
+      return JSON.stringify(root.coachInsightsSummary(true))
+    }
+
     function togglePinned(monitor: string): string {
       root.togglePinned(monitor)
       return root.pinned ? "open" : "closed"
@@ -570,6 +654,10 @@ Item {
     target: root.shell
     enabled: root.shell !== null
     ignoreUnknownSignals: true
+
+    function onMenuSelectionAfterSearch(event) {
+      root.recordMenuSelection(event)
+    }
 
     function onAppSelectedAfterSearch(event) {
       if (!event || Number(event.schemaVersion) !== 1) return
@@ -779,8 +867,8 @@ Item {
 
               Text {
                 Layout.fillWidth: true
-                text: root.searchedAppsSummary(true).length > 0
-                  ? (root.searchedAppsSummary().length > 0 ? "Available insights" : "No active coach suggestions")
+                text: root.coachInsightsSummary(true).length > 0
+                  ? (root.coachInsightsSummary().length > 0 ? "Available insights" : "No active coach suggestions")
                   : "No insights yet. Make sure the Omarchy launcher has the supported hooks. "
                     + "Read more in GitHub issue #17 from the permanent panel."
                 wrapMode: Text.WordWrap
@@ -824,7 +912,7 @@ Item {
 
               Text {
                 Layout.fillWidth: true
-                text: root.searchedAppsSummary(true).length + " searched apps · " + root.totalAppSelectionCount() + " selections"
+                text: root.menuSelectionIdentityCount() + " searched items · " + root.totalMenuSelectionCount() + " selections"
                 horizontalAlignment: Text.AlignHCenter
                 color: Util.alpha(Color.popups.text, 0.5)
                 font.family: Style.font.family
@@ -874,7 +962,7 @@ Item {
 
             ColumnLayout {
               id: coachPane
-              readonly property var apps: root.searchedAppsSummary().slice(0, 3)
+              readonly property var apps: root.coachInsightsSummary().slice(0, 3)
               Layout.fillWidth: true
               Layout.preferredWidth: 1
               Layout.fillHeight: true
@@ -891,7 +979,7 @@ Item {
 
               Text {
                 Layout.fillWidth: true
-                visible: coachPane.apps.length === 0 && root.searchedAppsSummary(true).length > 0
+                visible: coachPane.apps.length === 0 && root.coachInsightsSummary(true).length > 0
                 text: "No active coach suggestions"
                 horizontalAlignment: Text.AlignHCenter
                 color: Util.alpha(Color.popups.text, 0.5)
@@ -901,7 +989,7 @@ Item {
 
               Text {
                 Layout.fillWidth: true
-                visible: root.searchedAppsSummary(true).length === 0
+                visible: root.coachInsightsSummary(true).length === 0
                 text: "No insights yet. Make sure the Omarchy launcher has the supported hooks."
                 wrapMode: Text.WordWrap
                 horizontalAlignment: Text.AlignHCenter
@@ -965,15 +1053,16 @@ Item {
                   PanelActionButton {
                     enabled: root.pinned
                     iconText: "\uf070"
-                    tooltipText: "Ignore " + String(parent.modelData.name || parent.modelData.desktopId || "app")
+                    tooltipText: "Ignore " + String(parent.modelData.name || parent.modelData.desktopId || "insight")
                     foreground: Util.alpha(Color.popups.text, 0.62)
                     hoverColor: Color.popups.text
                     fontSize: Style.font.caption
                     size: Style.space(22)
-                    onClicked: root.ignoreCoachApp(parent.modelData.desktopId)
+                    onClicked: root.ignoreCoachInsight(parent.modelData)
                   }
 
                   PanelActionButton {
+                    visible: parent.modelData.kind === "app"
                     enabled: root.pinned
                     iconText: "\uf067"
                     tooltipText: "Add keybind"
@@ -985,6 +1074,7 @@ Item {
                   }
 
                   PanelActionButton {
+                    visible: parent.modelData.kind === "app"
                     enabled: root.pinned && parent.modelData.matches.length > 0
                     iconText: "\uf11c"
                     tooltipText: parent.modelData.matches.length > 0
@@ -1078,7 +1168,7 @@ Item {
 
               Text {
                 Layout.alignment: Qt.AlignHCenter
-                text: root.searchedAppsSummary(true).length + " searched apps · " + root.totalAppSelectionCount() + " selections"
+                text: root.menuSelectionIdentityCount() + " searched items · " + root.totalMenuSelectionCount() + " selections"
                 color: Util.alpha(Color.popups.text, 0.62)
                 font.family: Style.font.family
                 font.pixelSize: Style.font.caption

@@ -1,12 +1,13 @@
 # Omacoach
 
-> ⚠️ **Omarchy search must be modified for searched-app coaching to work.**
+> ⚠️ **Omarchy search must be modified for search-selection coaching to work.**
 > Shortcut discovery and attempted-shortcut measurement work with stock Omarchy,
-> but the Coach cannot observe app selections unless the active Omarchy menu has
-> the hook in `experiments/menu-search-event.patch` or a compatible future
-> upstream event. Follow [issue #17](https://github.com/FilipHarald/omacoach/issues/17)
-> for integration status. Omacoach cannot currently detect this support
-> automatically.
+> but the Coach cannot observe menu selections unless the active Omarchy menu has
+> the capability proposed in
+> [basecamp/omarchy#7372](https://github.com/basecamp/omarchy/pull/7372).
+> `experiments/menu-search-event.patch` remains an app-only fallback. Omacoach
+> detects the proposed capability automatically. Follow
+> [issue #17](https://github.com/FilipHarald/omacoach/issues/17) for status.
 
 Omacoach helps you discover Omarchy with the keyboard and coaches you to become
 better at using shortcuts. It is an experimental Omarchy Quattro plugin.
@@ -82,18 +83,22 @@ omarchy-shell omacoach attempts
 omarchy-shell omacoach resetAttempts
 ```
 
-## Searched-app coaching
+## Search-selection coaching
 
-With the modified menu integration, Omacoach records a stable desktop-entry ID
-and display name only when the user explicitly selects an app after a non-empty
-search. It does not receive or retain the search query. Inspect the aggregates
-with:
+With the modified menu integration, Omacoach records a stable item ID, item kind,
+label, and canonical menu path only when the user explicitly selects a static
+action, app, menu, or link after a non-empty search. App events additionally
+include the desktop-entry ID. It does not receive or retain the search query,
+command, result rank, timestamp, or dmenu value. Dynamic provider rows and dmenu
+selections are excluded. Inspect the aggregates with:
 
 ```bash
+omarchy-shell omacoach menuSelections
 omarchy-shell omacoach searchedApps
 ```
 
-The matcher cross-checks desktop-entry identity, launcher-capable `o.bind`
+`searchedApps` is the app-only compatibility view. For app selections, the
+matcher cross-checks desktop-entry identity, launcher-capable `o.bind`
 definitions, and the effective binding list. It reports URL, command, Omarchy
 launcher, and default-application evidence rather than trusting labels alone:
 
@@ -102,7 +107,7 @@ launcher, and default-application evidence rather than trusting labels alone:
 ./scripts/match-searched-app-bindings --json
 ```
 
-Coach rows expose three actions:
+App Coach rows expose three actions:
 
 - **Ignore** hides an app until **Reset coach decisions** is used.
 - **Add keybind** prepends a commented, deduplicated app-specific draft to
@@ -110,12 +115,15 @@ Coach rows expose three actions:
 - **Show keybinding** opens the Omarchy keybinding selector narrowed to effective
   launcher bindings matched for that app.
 
+Static action, menu, and link rows expose **Ignore** only. Omacoach does not
+suggest or generate keybindings for those item kinds.
+
 The native event and capability contract is tracked in
 [issue #17](https://github.com/FilipHarald/omacoach/issues/17) and proposed in
 [basecamp/omarchy#7372](https://github.com/basecamp/omarchy/pull/7372).
-Omacoach accepts the proposed semantic event but cannot detect support yet.
-Unsupported menus should disable only search-selection coaching; shortcut hints
-and attempted-shortcut measurement are independent and should continue working.
+Omacoach accepts the proposed semantic event and detects its declared capability.
+Unsupported menus disable only search-selection coaching; shortcut hints and
+attempted-shortcut measurement are independent and continue working.
 
 ## Requirements
 
@@ -125,7 +133,7 @@ and attempted-shortcut measurement are independent and should continue working.
 - `hyprctl`, `luac`, `jq`, `xkbcli`, and Node.js available on `PATH`.
 - `qmllint` for development checks only.
 
-Searched-app coaching additionally needs the launcher hook described at the top
+Search-selection coaching additionally needs the menu hook described at the top
 of this README. Shortcut discovery and attempted-shortcut measurement work
 without it.
 
