@@ -267,6 +267,23 @@ Item {
     learnKeybindingsProcess.running = true
   }
 
+  function talkAboutCoachInsights() {
+    if (!pinned || !pluginDir || talkAboutCoachInsightsProcess.running) return
+    var measurements = {
+      schemaVersion: 2,
+      measurementEnabled: measurementEnabled,
+      bindings: attemptStats,
+      appSearches: appSearchStats,
+      menuSearches: menuSearchStats
+    }
+    togglePinned("")
+    talkAboutCoachInsightsProcess.command = [
+      pluginDir + "/scripts/talk-about-coach-insights",
+      JSON.stringify(measurements)
+    ]
+    talkAboutCoachInsightsProcess.running = true
+  }
+
   function recordAttempt(modifiers, keycode) {
     if (!statsLoaded || !measurementEnabled) return false
     var key = keycodeMap[String(keycode)]
@@ -538,6 +555,10 @@ Item {
 
   Process {
     id: learnKeybindingsProcess
+  }
+
+  Process {
+    id: talkAboutCoachInsightsProcess
   }
 
   FileView {
@@ -1024,6 +1045,47 @@ Item {
                     Qt.openUrlExternally(root.launcherHookIssueUrl)
                     root.togglePinned("")
                   }
+                }
+              }
+
+              Rectangle {
+                id: talkAboutCoachInsightsControl
+                property bool hovered: false
+                Layout.fillWidth: true
+                Layout.preferredHeight: Style.space(28)
+                radius: Math.min(Style.cornerRadius, Style.space(5))
+                color: hovered ? Util.alpha(Color.accent, 0.13) : "transparent"
+
+                RowLayout {
+                  anchors.centerIn: parent
+                  spacing: Style.space(6)
+
+                  Text {
+                    text: "󱚣"
+                    color: talkAboutCoachInsightsControl.hovered
+                      ? Color.accent
+                      : Util.alpha(Color.popups.text, 0.62)
+                    font.family: Style.font.family
+                    font.pixelSize: Style.font.bodySmall
+                  }
+
+                  Text {
+                    text: "Talk about coach insights with agent"
+                    color: talkAboutCoachInsightsControl.hovered
+                      ? Color.accent
+                      : Util.alpha(Color.popups.text, 0.62)
+                    font.family: Style.font.family
+                    font.pixelSize: Style.font.bodySmall
+                  }
+                }
+
+                MouseArea {
+                  anchors.fill: parent
+                  enabled: root.pinned && root.statsLoaded && !talkAboutCoachInsightsProcess.running
+                  hoverEnabled: true
+                  cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+                  onContainsMouseChanged: talkAboutCoachInsightsControl.hovered = containsMouse
+                  onClicked: root.talkAboutCoachInsights()
                 }
               }
 

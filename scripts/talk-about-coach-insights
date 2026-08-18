@@ -1,0 +1,24 @@
+#!/bin/bash
+
+set -euo pipefail
+
+ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+PROMPT_FILE="$ROOT/prompts/coach-insights.md"
+
+if (( $# != 1 )); then
+  printf 'Usage: %s <measurements-json>\n' "${0##*/}" >&2
+  exit 1
+fi
+
+measurements=$1
+jq -e 'type == "object"' <<<"$measurements" >/dev/null || {
+  printf 'talk-about-coach-insights: measurements must be a JSON object\n' >&2
+  exit 1
+}
+
+prompt=$(<"$PROMPT_FILE")
+prompt+=$'\n\n```json\n'
+prompt+=$(jq . <<<"$measurements")
+prompt+=$'\n```'
+
+exec omarchy agent prompt "$prompt"

@@ -6,10 +6,12 @@ test -x bin/toggle-panel
 test -x scripts/match-searched-app-bindings
 test -x scripts/add-app-keybind
 test -x scripts/show-app-keybindings
+test -x scripts/talk-about-coach-insights
 node tests/model.js
 node tests/app-binding-matcher.js
 lua tests/observer.lua
 bash tests/lifecycle.sh
+bash tests/coach-agent.sh
 keymap_output=$(scripts/keymap)
 grep -q $'65\tSPACE' <<<"$keymap_output"
 luac -p hypr/observer.lua hypr/ObserverState.lua

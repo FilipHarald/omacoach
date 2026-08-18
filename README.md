@@ -57,6 +57,8 @@ The permanent panel:
 - Closes with `Escape`, `SUPER+CTRL+K`, or its top-right close button.
 - Uses the same live modifier filtering as the passive overlay.
 - Shows Coach, Data, and Settings controls below the shortcut inventory.
+- Opens the configured Omarchy agent with the current aggregate measurements
+  and a prepared Coach discussion prompt.
 - Lets you pause collection, delete local data, configure passive triggers,
   change sorting, and reset coaching decisions.
 - Requests keyboard focus only while open; the passive overlay never does.
@@ -117,6 +119,14 @@ App Coach rows expose three actions:
 
 Static action, menu, and link rows expose **Ignore** only. Omacoach does not
 suggest or generate keybindings for those item kinds.
+
+Use **Talk about coach insights with agent** to open the configured Omarchy
+agent with the prepared prompt in [`prompts/coach-insights.md`](prompts/coach-insights.md).
+The prompt receives all current aggregate binding-attempt, searched-app, and
+searched-menu measurements. It does not include search queries, commands,
+timestamps, result ranks, unmatched or raw keys, focused applications, event
+history, UI preferences, or ignored-item decisions. Configure a default agent
+with `omarchy default agent <name>` before using the button.
 
 The native event and capability contract is tracked in
 [issue #17](https://github.com/FilipHarald/omacoach/issues/17) and proposed in
