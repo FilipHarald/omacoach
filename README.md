@@ -1,40 +1,77 @@
 # Omacoach
 
-Omacoach is an experimental Omarchy Quattro plugin that reveals available
-keyboard shortcuts while `SUPER`, `SHIFT`, `CTRL`, or `ALT` is held. Adding or
-removing modifiers filters the overlay to that exact combination. The overlay
-never takes keyboard focus and disappears before Hyprland executes an action
-key.
+> ⚠️ **Omarchy search must be modified for searched-app coaching to work.**
+> Shortcut discovery and attempted-shortcut measurement work with stock Omarchy,
+> but the Coach cannot observe app selections unless the active Omarchy menu has
+> the hook in `experiments/menu-search-event.patch` or a compatible future
+> upstream event. Omacoach cannot currently detect this support automatically.
 
-## Current prototype
+Omacoach helps you discover Omarchy with the keyboard and coaches you to become
+better at using shortcuts. It is an experimental Omarchy Quattro plugin.
+
+## Screenshots
+
+Hold a configured modifier to open the passive, click-through shortcut overlay:
+
+![Passive shortcut overlay](docs/screenshots/passive-overlay.webp)
+
+Press `SUPER+CTRL+K` to open the permanent, interactive panel:
+
+![Permanent coaching panel](docs/screenshots/permanent-panel.webp)
+
+See [GUIDE_PRINTSCREENS.md](GUIDE_PRINTSCREENS.md) to reproduce or update these
+images.
+
+## Shortcut overlay
 
 - Reads effective, described bindings from `omarchy-menu-keybindings --print`.
 - Shows described keyboard bindings containing at least one supported modifier.
-- Waits 180 ms before appearing, avoiding flashes for shortcuts already in
-  muscle memory.
-- Runs as a click-through, keyboard-focus-free layer-shell overlay.
-- Supports live modifier filtering and reloads after Hyprland config changes.
+- Opens after a 180 ms hold, avoiding flashes for shortcuts already in muscle
+  memory.
+- Supports `SUPER`, `SHIFT`, `CTRL`, and `ALT` as independent passive triggers;
+  all four are enabled by default and can be disabled separately.
+- Filters immediately when modifiers are added or removed.
+- Runs as a click-through, keyboard-focus-free layer-shell surface.
+- Starts around 50% screen height and grows downward, shifting upward only when
+  required to fit the output.
 - Collapses numeric workspace and bar-panel families into presentation-only
   `[nbr]` rows while retaining independent underlying bindings and counts.
-- Resolves terminal key presses through the active XKB layout and stores only
-  aggregate counts for chords that uniquely match the displayed inventory.
-- Labels those counts as attempted shortcuts, not confirmed invocations.
 - Supports source-order, alphabetical, or measurement-count sorting with
-  row-first or column-first grid flow; source order and column-first are defaults.
-- Lets users independently disable passive triggers for `SUPER`, `SHIFT`,
-  `CTRL`, or `ALT`; all four are enabled by default.
+  row-first or column-first grid flow.
 
 Mouse, wheel, `XF86`, `code:`, submap, and native multi-key chord bindings are
 not promised by this prototype. Hyprland does not expose a post-dispatch event,
-so they are excluded from attempted-shortcut measurement.
+so Omacoach records attempted shortcuts rather than confirmed invocations.
 
-Measurement is local and enabled when the plugin is enabled. It can be paused,
-inspected, or reset without disabling shortcut hints. The overlay data and
-settings panes expose the same toggle and delete controls; hover them before
-releasing the held modifiers for passive hints, or press `SUPER+CTRL+K` to
-toggle a pinned, interactive popover. The hold overlay stays fully click-through
-because QML cannot suppress Hyprland's compositor-level `SUPER+mouse`
-move/resize bindings:
+## Permanent panel
+
+Press `SUPER+CTRL+K` to toggle the permanent panel. It starts 20% from the top
+of the active output and grows downward so the close control and modifier row
+stay in fixed positions.
+
+The permanent panel:
+
+- Closes with `Escape`, `SUPER+CTRL+K`, or its top-right close button.
+- Uses the same live modifier filtering as the passive overlay.
+- Shows Coach, Data, and Settings controls below the shortcut inventory.
+- Lets you pause collection, delete local data, configure passive triggers,
+  change sorting, and reset coaching decisions.
+- Requests keyboard focus only while open; the passive overlay never does.
+
+## Local measurement
+
+Measurement is local and enabled when the plugin is enabled. Omacoach resolves
+terminal key presses through the configured XKB keymap and stores aggregate
+counts when a chord matches the parsed binding inventory. It stores no raw keys,
+unmatched chords, timestamps, focused applications, or event history.
+
+State is stored at:
+
+```text
+${XDG_STATE_HOME:-~/.local/state}/omacoach/attempts.json
+```
+
+Inspect or control measurement through the permanent panel or IPC:
 
 ```bash
 omarchy-shell omacoach measurement off
@@ -43,36 +80,79 @@ omarchy-shell omacoach attempts
 omarchy-shell omacoach resetAttempts
 ```
 
-The plugin stores only a count per matched binding in
-`${XDG_STATE_HOME:-~/.local/state}/omacoach/attempts.json`. It stores no raw
-keys, unmatched chords, timestamps, focused applications, or event history.
+## Searched-app coaching
 
-The searched-app experiment can record a stable desktop-entry ID and display
-name only when the user explicitly selects an app after a non-empty Omarchy
-menu search. It does not receive or retain the search query:
+With the modified menu integration, Omacoach records a stable desktop-entry ID
+and display name only when the user explicitly selects an app after a non-empty
+search. It does not receive or retain the search query. Inspect the aggregates
+with:
 
 ```bash
 omarchy-shell omacoach searchedApps
 ```
 
-Prototype existing-binding detection without changing the UI:
+The matcher cross-checks desktop-entry identity, launcher-capable `o.bind`
+definitions, and the effective binding list. It reports URL, command, Omarchy
+launcher, and default-application evidence rather than trusting labels alone:
 
 ```bash
 ./scripts/match-searched-app-bindings
 ./scripts/match-searched-app-bindings --json
 ```
 
-The matcher cross-checks desktop-entry identity, launcher-capable `o.bind`
-definitions, and the effective binding list. It reports URL, command, Omarchy
-launcher, and default-application evidence rather than trusting labels alone.
+Coach rows expose three actions:
 
-Pinned Coach rows expose three actions:
-
-- Ignore hides an app until **Reset coach decisions** is used in Data.
-- Add keybind prepends a commented, deduplicated app-specific draft to
+- **Ignore** hides an app until **Reset coach decisions** is used.
+- **Add keybind** prepends a commented, deduplicated app-specific draft to
   `~/.config/hypr/bindings.lua`, then opens the normal Omarchy config editor.
-- Show keybinding opens the Omarchy keybindings selector narrowed to the
-  effective launcher bindings matched for that app.
+- **Show keybinding** opens the Omarchy keybinding selector narrowed to effective
+  launcher bindings matched for that app.
+
+The current shell has no reliable capability probe for this menu integration.
+See [UPSTREAM.md](UPSTREAM.md) for the production event and capability contract.
+When detection becomes available, only searched-app coaching should be disabled
+on unsupported menus; shortcut hints and attempted-shortcut measurement are
+independent and should continue working.
+
+## Requirements
+
+- Omarchy Quattro with `omarchy-shell`, `omarchy-menu-keybindings`,
+  `omarchy-menu-select`, and `omarchy-launch-config-editor`.
+- Hyprland with the Lua APIs validated by `bin/install-hook`.
+- `hyprctl`, `luac`, `jq`, `xkbcli`, and Node.js available on `PATH`.
+- `qmllint` for development checks only.
+
+Searched-app coaching additionally needs the launcher hook described at the top
+of this README. Shortcut discovery and attempted-shortcut measurement work
+without it.
+
+## Install
+
+Install and enable the public plugin, then install its Hyprland observer and
+`SUPER+CTRL+K` panel binding:
+
+```bash
+omarchy plugin add https://github.com/FilipHarald/omacoach.git --enable
+~/.config/omarchy/plugins/omacoach/bin/install-hook
+```
+
+The hook validates the plugin and Hyprland Lua APIs, makes a timestamped backup
+of `~/.config/hypr/bindings.lua`, adds marked observer and panel-binding blocks,
+reloads Hyprland, and restores the backup if validation fails.
+
+## Remove
+
+Run the uninstall hook before removing the plugin checkout:
+
+```bash
+~/.config/omarchy/plugins/omacoach/bin/uninstall-hook
+omarchy plugin remove omacoach
+```
+
+Uninstalling disables the plugin when possible, transactionally removes the
+observer and panel binding, and permanently deletes
+`${XDG_STATE_HOME:-~/.local/state}/omacoach`. Configuration is restored from the
+timestamped backup if Hyprland rejects the change.
 
 ## Development install
 
@@ -83,25 +163,22 @@ omarchy plugin enable omacoach
 ./bin/install-hook
 ```
 
-The observer installer makes a timestamped backup of
-`~/.config/hypr/bindings.lua`, adds one marked loader block, reloads Hyprland,
-adds a separate marked `SUPER+CTRL+K` panel binding, reloads Hyprland, and
-rolls back if validation fails.
+Use `./bin/uninstall-hook` before removing the development symlink.
 
-Uninstalling disables the plugin when possible, removes the observer and panel
-binding transactionally, and permanently deletes
-`${XDG_STATE_HOME:-~/.local/state}/omacoach`. Configuration is restored from the
-timestamped backup if Hyprland rejects the change:
+## Development
+
+Run all model, observer, lifecycle, plugin, Lua, and QML checks with:
 
 ```bash
-./bin/uninstall-hook
+./scripts/check
 ```
 
-Run the checks with `./scripts/check`. Preview the UI without holding a key:
+Preview or hide the passive UI without holding a modifier:
 
 ```bash
-omarchy-shell omacoach preview SUPER "$(hyprctl activeworkspace -j | jq -r .monitor)"
-omarchy-shell omacoach hide
+monitor=$(hyprctl activeworkspace -j | jq -r '.monitor // ""')
+omarchy-shell omacoach preview SUPER "$monitor"
+omarchy-shell omacoach hide "$(date +%s%3N)"
 ```
 
 ## Attribution
@@ -109,4 +186,4 @@ omarchy-shell omacoach hide
 The passive Hyprland observer and contextual overlay architecture were informed
 by [NextKey](https://github.com/russellmorton/next-key), Copyright (c) 2026
 Russell Morton, available under the MIT License. See
-`THIRD_PARTY_NOTICES.md`.
+[`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).

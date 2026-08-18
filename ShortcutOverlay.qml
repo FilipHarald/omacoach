@@ -13,6 +13,7 @@ Item {
 
   property bool opened: false
   property var manifest: null
+  property var shell: null
   property string targetMonitor: ""
   property string currentModifierKey: "SUPER"
   property var bindingGroups: ({})
@@ -40,6 +41,7 @@ Item {
   readonly property string stateHome: Quickshell.env("XDG_STATE_HOME") || (Quickshell.env("HOME") + "/.local/state")
   readonly property string stateDir: stateHome + "/omacoach"
   readonly property string statsPath: stateDir + "/attempts.json"
+  readonly property string launcherHookIssueUrl: "https://github.com/FilipHarald/omacoach/issues/17"
 
   onPluginDirChanged: {
     if (pluginDir && !keymapProcess.running) {
@@ -564,6 +566,17 @@ Item {
     if (!ensureStateDirProcess.running) ensureStateDirProcess.running = true
   }
 
+  Connections {
+    target: root.shell
+    enabled: root.shell !== null
+    ignoreUnknownSignals: true
+
+    function onAppSelectedAfterSearch(event) {
+      if (!event || Number(event.schemaVersion) !== 1) return
+      root.recordSearchedApp(event.desktopId, event.name)
+    }
+  }
+
   Variants {
     model: Quickshell.screens
 
@@ -591,7 +604,7 @@ Item {
 
       WlrLayershell.namespace: "omacoach-shortcuts"
       WlrLayershell.layer: WlrLayer.Overlay
-      WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+      WlrLayershell.keyboardFocus: root.pinned ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
 
       BorderSurface {
         id: card
@@ -615,7 +628,10 @@ Item {
           id: content
           anchors.fill: parent
           anchors.margins: Style.spacing.panelPadding
+          focus: root.pinned
           spacing: Style.space(12)
+
+          Keys.onEscapePressed: root.togglePinned("")
 
           Rectangle {
             id: topCloseControl
@@ -628,7 +644,7 @@ Item {
 
             Text {
               anchors.centerIn: parent
-              text: "To exit: [SUPER CTRL K]"
+              text: "To exit: [SUPER CTRL K] or [ESC]"
               color: Color.urgent
               font.family: Style.font.family
               font.pixelSize: Style.font.bodySmall
@@ -763,8 +779,11 @@ Item {
 
               Text {
                 Layout.fillWidth: true
-                visible: root.searchedAppsSummary().length > 0
-                text: "Available insights"
+                text: root.searchedAppsSummary(true).length > 0
+                  ? (root.searchedAppsSummary().length > 0 ? "Available insights" : "No active coach suggestions")
+                  : "No insights yet. Make sure the Omarchy launcher has the supported hooks. "
+                    + "Read more in GitHub issue #17 from the permanent panel."
+                wrapMode: Text.WordWrap
                 horizontalAlignment: Text.AlignHCenter
                 color: Util.alpha(Color.popups.text, 0.5)
                 font.family: Style.font.family
@@ -871,14 +890,53 @@ Item {
               }
 
               Text {
-                Layout.alignment: Qt.AlignHCenter
-                visible: coachPane.apps.length === 0
-                text: root.searchedAppsSummary(true).length > 0
-                  ? "No active coach suggestions"
-                  : "No apps selected after search yet"
+                Layout.fillWidth: true
+                visible: coachPane.apps.length === 0 && root.searchedAppsSummary(true).length > 0
+                text: "No active coach suggestions"
+                horizontalAlignment: Text.AlignHCenter
                 color: Util.alpha(Color.popups.text, 0.5)
                 font.family: Style.font.family
                 font.pixelSize: Style.font.caption
+              }
+
+              Text {
+                Layout.fillWidth: true
+                visible: root.searchedAppsSummary(true).length === 0
+                text: "No insights yet. Make sure the Omarchy launcher has the supported hooks."
+                wrapMode: Text.WordWrap
+                horizontalAlignment: Text.AlignHCenter
+                color: Util.alpha(Color.popups.text, 0.5)
+                font.family: Style.font.family
+                font.pixelSize: Style.font.caption
+              }
+
+              Rectangle {
+                id: launcherHookIssueControl
+                property bool hovered: false
+                Layout.fillWidth: true
+                Layout.preferredHeight: Style.space(28)
+                radius: Math.min(Style.cornerRadius, Style.space(5))
+                color: hovered ? Util.alpha(Color.accent, 0.13) : "transparent"
+
+                Text {
+                  anchors.centerIn: parent
+                  text: "Read more (opens GitHub issue)"
+                  color: launcherHookIssueControl.hovered ? Color.accent : Util.alpha(Color.popups.text, 0.62)
+                  font.family: Style.font.family
+                  font.pixelSize: Style.font.bodySmall
+                }
+
+                MouseArea {
+                  anchors.fill: parent
+                  enabled: root.pinned
+                  hoverEnabled: true
+                  cursorShape: Qt.PointingHandCursor
+                  onContainsMouseChanged: launcherHookIssueControl.hovered = containsMouse
+                  onClicked: {
+                    Qt.openUrlExternally(root.launcherHookIssueUrl)
+                    root.togglePinned("")
+                  }
+                }
               }
 
               Repeater {
