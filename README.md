@@ -117,8 +117,11 @@ App Coach rows expose three actions:
 - **Show keybinding** opens the Omarchy keybinding selector narrowed to effective
   launcher bindings matched for that app.
 
-Static action, menu, and link rows expose **Ignore** only. Omacoach does not
-suggest or generate keybindings for those item kinds.
+Static action rows expose **Show keybinding** when their effective menu command
+matches an effective `o.bind` definition, such as `Learn › Keybindings` and its
+locally remapped `SUPER+U` binding. Static action, menu, and link rows expose
+**Ignore**, but Omacoach does not suggest or generate new keybindings for those
+item kinds.
 
 Use **Talk about coach insights with agent** to open the configured Omarchy
 agent with the prepared prompt in [`prompts/coach-insights.md`](prompts/coach-insights.md).

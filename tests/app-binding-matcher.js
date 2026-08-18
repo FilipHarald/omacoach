@@ -7,7 +7,8 @@ const effective = Matcher.parseEffectiveBindings([
   "SUPER SHIFT + B -> Browser",
   "SUPER SHIFT + C -> Calendar",
   "SUPER CTRL ALT + D -> Calendar",
-  "SUPER SHIFT + O -> Obsidian"
+  "SUPER SHIFT + O -> Obsidian",
+  "SUPER + U -> Show key bindings"
 ].join("\n"))
 
 const launchers = Matcher.parseLauncherBindings([
@@ -15,7 +16,9 @@ const launchers = Matcher.parseLauncherBindings([
   'o.bind("SUPER + SHIFT + A", "ChatGPT", { webapp = "https://chatgpt.com" })',
   'o.bind("SUPER + SHIFT + B", "Browser", { omarchy = "browser" })',
   'o.bind("SUPER + SHIFT + C", "Calendar", { webapp = "https://calendar.example.com/app" })',
-  'o.bind("SUPER + SHIFT + O", "Obsidian", { launch = "obsidian" })'
+  'o.bind("SUPER + SHIFT + O", "Obsidian", { launch = "obsidian" })',
+  'o.bind("SUPER + K", "Keybindings", "omarchy-menu-keybindings")',
+  'o.bind("SUPER + U", "Show key bindings", "omarchy-menu-keybindings")'
 ].join("\n"), "applications.lua")
 
 const searches = {
@@ -53,6 +56,28 @@ assert.deepEqual(byId.calendar.matches.map(match => match.shortcut), ["SUPER SHI
 assert.deepEqual(byId["calendar-other"].matches, [])
 assert.equal(byId.obsidian.matches[0].evidence, "executable")
 assert.deepEqual(byId.slack.matches, [])
+
+const defaultMenu = Matcher.parseMenuJsonc(`{
+  // Learn
+  "learn.keybindings": {"label":"Keybindings","action":"omarchy-menu-keybindings"},
+  "style.theme": {"label":"Theme","action":"omarchy-menu-theme"},
+}`)
+const userMenu = Matcher.parseMenuJsonc(`{
+  "learn.keybindings": {"label":"Keyboard shortcuts"}
+}`)
+const menuResults = Matcher.matchSearchedMenuItems({
+  searches: {
+    "learn.keybindings": { kind: "action", label: "Keybindings", path: "Learn > Keybindings", count: 4 },
+    "style.theme": { kind: "action", label: "Theme", path: "Style > Theme", count: 2 }
+  },
+  menuItems: Matcher.mergeMenuSources(defaultMenu, userMenu),
+  effectiveBindings: effective,
+  launcherBindings: launchers
+})
+const menuById = Object.fromEntries(menuResults.map(result => [result.itemId, result]))
+assert.deepEqual(menuById["learn.keybindings"].matches.map(match => match.shortcut), ["SUPER + U"])
+assert.equal(menuById["learn.keybindings"].matches[0].evidence, "menu-action")
+assert.deepEqual(menuById["style.theme"].matches, [])
 
 assert.equal(
   Matcher.bindingDraft("ChatGPT", "ChatGPT", desktops.ChatGPT),

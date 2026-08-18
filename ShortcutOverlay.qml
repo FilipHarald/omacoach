@@ -28,6 +28,7 @@ Item {
   property var menuSearchStats: ({})
   property var coachDecisions: ({})
   property var appBindingMatches: ({})
+  property var menuBindingMatches: ({})
   property bool statsLoaded: false
   property bool measurementEnabled: true
   property string sortOrder: "none"
@@ -190,6 +191,7 @@ Item {
     menuSearchStats = ({})
     coachDecisions = ({})
     appBindingMatches = ({})
+    menuBindingMatches = ({})
     if (sortOrder === "measurements") updateModel(currentModifierKey)
     scheduleStatsSave()
   }
@@ -239,10 +241,30 @@ Item {
     appBindingMatches = next
   }
 
+  function loadMenuBindingMatches(output) {
+    var parsed = null
+    try { parsed = JSON.parse(String(output || "")) } catch (e) { parsed = null }
+    var next = {}
+    if (Array.isArray(parsed)) {
+      for (var i = 0; i < parsed.length; i++) {
+        var item = parsed[i]
+        if (!item || !item.itemId) continue
+        next[String(item.itemId)] = Array.isArray(item.matches) ? item.matches : []
+      }
+    }
+    menuBindingMatches = next
+  }
+
   function refreshAppBindingMatches() {
-    if (!pluginDir || coachMatcherProcess.running) return
-    coachMatcherProcess.command = [pluginDir + "/scripts/match-searched-app-bindings", "--json"]
-    coachMatcherProcess.running = true
+    if (!pluginDir) return
+    if (!coachMatcherProcess.running) {
+      coachMatcherProcess.command = [pluginDir + "/scripts/match-searched-app-bindings", "--json"]
+      coachMatcherProcess.running = true
+    }
+    if (!menuBindingMatcherProcess.running) {
+      menuBindingMatcherProcess.command = [pluginDir + "/scripts/match-searched-menu-bindings", "--json"]
+      menuBindingMatcherProcess.running = true
+    }
   }
 
   function openAddKeybind(app) {
@@ -256,13 +278,14 @@ Item {
     addKeybindProcess.running = true
   }
 
-  function openLearnKeybindings(app) {
+  function openLearnKeybindings(insight) {
     if (!pinned || learnKeybindingsProcess.running) return
+    var isApp = insight.kind === "app"
     togglePinned("")
     learnKeybindingsProcess.command = [
-      pluginDir + "/scripts/show-app-keybindings",
-      String(app.desktopId || ""),
-      String(app.name || app.desktopId || "")
+      pluginDir + (isApp ? "/scripts/show-app-keybindings" : "/scripts/show-menu-item-keybindings"),
+      String(isApp ? (insight.desktopId || "") : (insight.itemId || "")),
+      String(insight.name || insight.desktopId || insight.itemId || "")
     ]
     learnKeybindingsProcess.running = true
   }
@@ -387,6 +410,7 @@ Item {
     }
     menuSearchStats = next
     scheduleStatsSave()
+    coachMatchRefreshTimer.restart()
     return true
   }
 
@@ -423,7 +447,7 @@ Item {
         itemId: itemId,
         name: String(entry.path || entry.label || itemId),
         count: Number(entry.count),
-        matches: [],
+        matches: menuBindingMatches[itemId] || [],
         kind: String(entry.kind || "action"),
         decisionKey: decisionKey
       })
@@ -546,6 +570,14 @@ Item {
     stdout: StdioCollector {
       waitForEnd: true
       onStreamFinished: root.loadAppBindingMatches(text)
+    }
+  }
+
+  Process {
+    id: menuBindingMatcherProcess
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: root.loadMenuBindingMatches(text)
     }
   }
 
@@ -1136,7 +1168,7 @@ Item {
                   }
 
                   PanelActionButton {
-                    visible: parent.modelData.kind === "app"
+                    visible: parent.modelData.kind === "app" || parent.modelData.matches.length > 0
                     enabled: root.pinned && parent.modelData.matches.length > 0
                     iconText: "\uf11c"
                     tooltipText: parent.modelData.matches.length > 0

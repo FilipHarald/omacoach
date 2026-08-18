@@ -1,0 +1,26 @@
+#!/usr/bin/env node
+
+const path = require("node:path")
+const { execFileSync } = require("node:child_process")
+
+const itemId = String(process.argv[2] || "").trim()
+const name = String(process.argv[3] || itemId).trim()
+if (!itemId) {
+  console.error("Usage: show-menu-item-keybindings <item-id> [name]")
+  process.exit(1)
+}
+
+const matcher = path.join(__dirname, "match-searched-menu-bindings")
+const results = JSON.parse(execFileSync(matcher, ["--json"], { encoding: "utf8" }))
+const item = results.find(result => String(result.itemId) === itemId)
+const matches = item && Array.isArray(item.matches) ? item.matches : []
+if (matches.length === 0) process.exit(1)
+
+const options = matches.map(match => String(match.shortcut) + " -> " + String(match.description))
+try {
+  execFileSync("omarchy-menu-select", ["Keybindings - " + name, ...options, "--", "--width", "800", "--height", "500"], {
+    stdio: "ignore"
+  })
+} catch (_) {
+  // Cancelling the selector is expected.
+}

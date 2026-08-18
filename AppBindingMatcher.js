@@ -5,6 +5,10 @@ function normalize(value) {
   return String(value || "").toLowerCase().replace(/\.desktop$/i, "").replace(/[^a-z0-9]+/g, "")
 }
 
+function normalizeCommand(value) {
+  return String(value || "").trim().replace(/\s+/g, " ")
+}
+
 function canonicalUrl(value) {
   try {
     const url = new URL(String(value || ""))
@@ -51,6 +55,33 @@ function parseEffectiveBindings(output) {
     shortcut: binding.modifierKey + " + " + String(binding.key || "").toUpperCase(),
     description: binding.description
   }))
+}
+
+function parseMenuJsonc(raw) {
+  const stripped = String(raw || "")
+    .replace(/^\s*\/\/[^\n]*(\n|$)/gm, "")
+    .replace(/,(\s*[}\]])/g, "$1")
+  if (!stripped.trim()) return {}
+  try {
+    const parsed = JSON.parse(stripped)
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {}
+    const source = parsed.items && typeof parsed.items === "object" && !Array.isArray(parsed.items)
+      ? parsed.items : parsed
+    return source
+  } catch (_) {
+    return {}
+  }
+}
+
+function mergeMenuSources(defaultItems, userItems) {
+  const merged = {}
+  for (const source of [defaultItems || {}, userItems || {}]) {
+    for (const [itemId, item] of Object.entries(source)) {
+      if (!item || typeof item !== "object" || Array.isArray(item)) continue
+      merged[itemId] = { ...(merged[itemId] || {}), ...item }
+    }
+  }
+  return merged
 }
 
 function luaField(raw, name) {
@@ -214,13 +245,58 @@ function matchSearchedApps(options) {
   return results.sort((left, right) => right.count - left.count || left.name.localeCompare(right.name))
 }
 
+function matchSearchedMenuItems(options) {
+  const searches = options.searches || {}
+  const menuItems = options.menuItems || {}
+  const effective = options.effectiveBindings || []
+  const effectiveBySignature = new Set(effective.map(bindingSignature))
+  const commandBindings = (options.launcherBindings || []).filter(binding =>
+    binding.action.command && effectiveBySignature.has(bindingSignature(binding)))
+  const results = []
+
+  for (const itemId of Object.keys(searches)) {
+    const observed = searches[itemId] || {}
+    const menuItem = menuItems[itemId] || {}
+    const action = normalizeCommand(menuItem.action)
+    const matches = []
+    const seen = new Set()
+    if (action) {
+      for (const binding of commandBindings) {
+        if (normalizeCommand(binding.action.command) !== action || seen.has(binding.shortcut)) continue
+        seen.add(binding.shortcut)
+        matches.push({
+          shortcut: binding.shortcut,
+          description: binding.description,
+          confidence: 100,
+          evidence: "menu-action",
+          source: binding.source,
+          line: binding.line
+        })
+      }
+    }
+    matches.sort((left, right) => left.shortcut.localeCompare(right.shortcut))
+    results.push({
+      itemId,
+      name: String(observed.path || observed.label || itemId),
+      count: Number(observed.count) || 0,
+      matches
+    })
+  }
+
+  return results.sort((left, right) => right.count - left.count || left.name.localeCompare(right.name))
+}
+
 module.exports = {
   canonicalUrl,
   executableIn,
+  normalizeCommand,
   parseEffectiveBindings,
+  parseMenuJsonc,
+  mergeMenuSources,
   parseLauncherBindings,
   parseDesktopEntry,
   desktopLaunchCommand,
   bindingDraft,
-  matchSearchedApps
+  matchSearchedApps,
+  matchSearchedMenuItems
 }
