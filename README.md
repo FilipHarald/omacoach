@@ -12,6 +12,8 @@
 Omacoach helps you discover Omarchy with the keyboard and coaches you to become
 better at using shortcuts. It is an experimental Omarchy Quattro plugin.
 
+[View Omacoach on Omarchy Plugins](https://omarchyplugins.com/plugin.html?id=io.github.filipharald.omacoach)
+
 ## Screenshots
 
 Hold a configured modifier to open the passive, click-through shortcut overlay:
